@@ -46,7 +46,7 @@ def modified_recipes(branch='origin/master'):
     return recipes
 
 
-def build(target_python, requirements):
+def build(target_python, target_bootstrap, requirements):
     """
     Builds an APK given a target Python and a set of requirements.
     """
@@ -63,9 +63,12 @@ def build(target_python, requirements):
     with current_directory('testapps/'):
         try:
             for line in sh.python(
-                    testapp, 'apk', '--sdk-dir', android_sdk_home,
-                    '--ndk-dir', android_ndk_home, '--bootstrap', 'sdl2', '--requirements',
-                    requirements, _err_to_out=True, _iter=True):
+                    testapp, 'apk',
+                    '--sdk-dir', android_sdk_home,
+                    '--ndk-dir', android_ndk_home,
+                    '--bootstrap', target_bootstrap,
+                    '--requirements', requirements,
+                    _err_to_out=True, _iter=True):
                 print(line)
         except sh.ErrorReturnCode as e:
             raise
@@ -89,7 +92,7 @@ def main():
     broken_recipes = BROKEN_RECIPES[target_python]
     recipes -= broken_recipes
     print('recipes to build (no broken):', recipes)
-    build(target_python, recipes)
+    build(target_python, bs.name, recipes)
 
 
 if __name__ == '__main__':
