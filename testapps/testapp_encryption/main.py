@@ -90,37 +90,12 @@ try:
     k = sha3.keccak_512()
     k.update(b"data")
     print('Test pysha3 operation (keccak_512): {}'.format(k.hexdigest()))
-    status_import_pysha3 = 'Success'
-except ImportError as e6:
+    status_import_pysha3 = 'Success (import and doing simple operations)'
+except Exception as e6:
     print('**************************')
     print('Unable to import/operate with pysha3:\n{}'.format(e6))
     print('**************************')
     status_import_pysha3 = 'Error'
-
-# Test pycryptodome
-try:
-    from Crypto.PublicKey import RSA
-
-    print('Ok imported pycryptodome, testing some basic operations...')
-    secret_code = "Unguessable"
-    key = RSA.generate(2048)
-    encrypted_key = key.export_key(passphrase=secret_code, pkcs=8,
-                                   protection="scryptAndAES128-CBC")
-    print('\t -> Testing key for secret code "Unguessable": {}'.format(
-        encrypted_key))
-
-    file_out = open("rsa_key.bin", "wb")
-    file_out.write(encrypted_key)
-    print('\t -> Testing key write: {}'.format(
-        'ok' if os.path.exists(file_out) else 'fail'))
-
-    print('\t -> Testing Public key:'.format(key.publickey().export_key()))
-    status_import_pycryptodome = 'Success (import and doing simple operations)'
-except ImportError as e6:
-    print('**************************')
-    print('Unable to import/operate with pycryptodome:\n{}'.format(e6))
-    print('**************************')
-    status_import_pycryptodome = 'Error'
 
 # Test libtorrent
 try:
@@ -227,9 +202,6 @@ ScrollView:
             test_module: 'pysha3'
             test_result: app.status_import_pysha3
         TestImport:
-            test_module: 'pycryptodome'
-            test_result: app.status_import_pycryptodome
-        TestImport:
             test_module: 'libtorrent'
             test_result: app.status_import_libtorrent
         Image:
@@ -302,7 +274,6 @@ class TestApp(App):
     status_import_scrypt = status_import_scrypt
     status_import_m2crypto = status_import_m2crypto
     status_import_pysha3 = status_import_pysha3
-    status_import_pycryptodome = status_import_pycryptodome
     status_import_libtorrent = status_import_libtorrent
 
     def build(self):
