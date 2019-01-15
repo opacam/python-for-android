@@ -8,7 +8,11 @@ import sh
 class M2CryptoRecipe(CompiledComponentsPythonRecipe):
     version = '0.30.1'
     url = 'https://gitlab.com/m2crypto/m2crypto/-/archive/{version}/m2crypto-{version}.tar.gz'
-    depends = [('python2', 'python3'), 'openssl', 'setuptools']
+    # The `typing` dependency it's only useful for python2 (we need that
+    # module to successfully import m2crypto) and does nothing in python3,
+    # because it's installed as a built-in module and it will not be installed
+    # ...but...we should remove that dependency when we remove python2 support
+    depends = [('python2', 'python3'), 'openssl', 'setuptools', 'typing']
     site_packages_name = 'M2Crypto'
     call_hostpython_via_targetpython = False
 
