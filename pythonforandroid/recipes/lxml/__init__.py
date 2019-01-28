@@ -5,7 +5,7 @@ from os import uname
 
 class LXMLRecipe(CompiledComponentsPythonRecipe):
     version = '4.2.5'
-    url = 'https://pypi.python.org/packages/source/l/lxml/lxml-{version}.tar.gz'  # noqa
+    url = 'https://pypi.python.org/packages/source/l/lxml/lxml-{version}.tar.gz'
     depends = ['librt', 'libxml2', 'libxslt', 'setuptools']
     name = 'lxml'
 
