@@ -152,6 +152,7 @@ def shprint(command, *args, **kwargs):
     if "P4A_FULL_DEBUG" in os.environ:
         tail_n = 0
         full_debug = True
+    force_debug = kwargs.pop('_force_debug', False)
     filter_in = kwargs.pop('_filter', None)
     filter_out = kwargs.pop('_filterout', None)
     if len(logger.handlers) > 1:
@@ -164,7 +165,7 @@ def shprint(command, *args, **kwargs):
                        command_string] + list(args))
 
     # If logging is not in DEBUG mode, trim the command if necessary
-    if logger.level > logging.DEBUG:
+    if logger.level > logging.DEBUG and not force_debug:
         logger.info('{}{}'.format(shorten_string(string, columns - 12),
                                   Err_Style.RESET_ALL))
     else:
@@ -178,7 +179,7 @@ def shprint(command, *args, **kwargs):
         for line in output:
             if isinstance(line, bytes):
                 line = line.decode('utf-8', errors='replace')
-            if logger.level > logging.DEBUG:
+            if logger.level > logging.DEBUG and not force_debug:
                 if full_debug:
                     stdout.write(line)
                     stdout.flush()
@@ -204,7 +205,7 @@ def shprint(command, *args, **kwargs):
             stdout.write('{}\r{:>{width}}\r'.format(
                 Err_Style.RESET_ALL, ' ', width=(columns - 1)))
             stdout.flush()
-        if tail_n is not None or filter_in or filter_out:
+        if tail_n is not None or filter_in or filter_out or force_debug:
             def printtail(out, name, forecolor, tail_n=0,
                           re_filter_in=None, re_filter_out=None):
                 lines = out.splitlines()

@@ -123,7 +123,13 @@ class OpenCVRecipe(NDKRecipe):
                         major=python_major, site_packages=python_site_packages),
 
                     self.get_build_dir(arch.arch),
-                    _env=env)
+                    _env=env,
+                    # Hack to bypass travis test...we force to debug the build
+                    # of opencv's recipe because otherwise we will not receive
+                    # a console output for more than 10 minutes, making travis
+                    # to think that the built has failed when probably is not
+                    # the case.
+                    _force_debug=True)
             shprint(sh.make, '-j' + str(cpu_count()), 'opencv_python' + python_major)
             # Install python bindings (cv2.so)
             shprint(sh.cmake, '-DCOMPONENT=python', '-P', './cmake_install.cmake')
