@@ -6,10 +6,10 @@ from pythonforandroid.logger import info, warning
 from pythonforandroid.util import BuildInterruptingException
 
 # We only check the NDK major version
-MIN_NDK_VERSION = 17
-MAX_NDK_VERSION = 17
+MIN_NDK_VERSION = 19
+MAX_NDK_VERSION = 19
 
-RECOMMENDED_NDK_VERSION = '17c'
+RECOMMENDED_NDK_VERSION = '19b'
 OLD_NDK_MESSAGE = 'Older NDKs may not be compatible with all p4a features.'
 NEW_NDK_MESSAGE = 'Newer NDKs may not be fully supported by p4a.'
 

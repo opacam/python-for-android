@@ -1,6 +1,7 @@
 from distutils.spawn import find_executable
 from os import environ
-from os.path import (exists, join, dirname, split)
+from os.path import join, dirname, split
+from multiprocessing import cpu_count
 from glob import glob
 
 from pythonforandroid.recipe import Recipe
@@ -38,90 +39,89 @@ class Arch(object):
 
     @property
     def target(self):
-        target_data = self.command_prefix.split('-')
-        return '-'.join(
-            [target_data[0], 'none', target_data[1], target_data[2]])
+        # As of NDK r19, the toolchains installed by default with the
+        # NDK may be used in-place. The make_standalone_toolchain.py script
+        # is no longer needed for interfacing with arbitrary build systems.
+        # See: https://developer.android.com/ndk/guides/other_build_systems
+        return '{triplet}{ndk_api}'.format(
+            triplet=self.command_prefix, ndk_api=self.ctx.ndk_api
+        )
 
     def get_env(self, with_flags_in_cc=True, clang=False):
         env = {}
 
+        # CFLAGS and CXXFLAGS
         cflags = [
-            '-DANDROID',
-            '-fomit-frame-pointer',
-            '-D__ANDROID_API__={}'.format(self.ctx.ndk_api)]
-        if not clang:
-            cflags.append('-mandroid')
-        else:
-            cflags.append('-target ' + self.target)
-            toolchain = '{android_host}-{toolchain_version}'.format(
-                android_host=self.ctx.toolchain_prefix,
-                toolchain_version=self.ctx.toolchain_version)
-            toolchain = join(self.ctx.ndk_dir, 'toolchains', toolchain,
-                             'prebuilt', build_platform)
-            cflags.append('-gcc-toolchain {}'.format(toolchain))
-
+            '-target ' + self.target,
+            '-fomit-frame-pointer']
         env['CFLAGS'] = ' '.join(cflags)
+        env['CXXFLAGS'] = env['CFLAGS']
+
+        # CPPFLAGS (for macros and includes)
+        cppflags = [
+            '-DANDROID',
+            '-D__ANDROID_API__={}'.format(self.ctx.ndk_api),
+            '-I{}/sysroot/usr/include/{}'.format(
+                self.ctx.ndk_dir, self.command_prefix
+            ),
+            '-I'
+            + join(
+                self.ctx.get_python_install_dir(),
+                'include/python{}'.format(self.ctx.python_recipe.version[0:3]),
+            ),
+        ]
+        env['CPPFLAGS'] = ' '.join(cppflags)
 
         # Link the extra global link paths first before anything else
         # (such that overriding system libraries with them is possible)
-        env['LDFLAGS'] = ' ' + " ".join([
-            "-L'" + l.replace("'", "'\"'\"'") + "'"  # no shlex.quote in py2
-            for l in self.extra_global_link_paths
-        ]) + ' '
+        env['LDFLAGS'] = (
+            ' '
+            + " ".join(
+                [
+                    "-L'"
+                    + l.replace("'", "'\"'\"'")
+                    + "'"  # no shlex.quote in py2
+                    for l in self.extra_global_link_paths
+                ]
+            )
+            + ' '
+        )
 
-        sysroot = join(self.ctx._ndk_dir, 'sysroot')
-        if exists(sysroot):
-            # post-15 NDK per
-            # https://android.googlesource.com/platform/ndk/+/ndk-r15-release/docs/UnifiedHeaders.md
-            env['CFLAGS'] += ' -isystem {}/sysroot/usr/include/{}'.format(
-                self.ctx.ndk_dir, self.ctx.toolchain_prefix)
-            env['CFLAGS'] += ' -I{}/sysroot/usr/include/{}'.format(
-                self.ctx.ndk_dir, self.command_prefix)
-        else:
-            sysroot = self.ctx.ndk_platform
-            env['CFLAGS'] += ' -I{}'.format(self.ctx.ndk_platform)
-        env['CFLAGS'] += ' -isysroot {} '.format(sysroot)
-        env['CFLAGS'] += '-I' + join(self.ctx.get_python_install_dir(),
-                                     'include/python{}'.format(
-                                         self.ctx.python_recipe.version[0:3])
-                                    )
+        # LDFLAGS: Extra flags to give to compilers when they are supposed to
+        # invoke the linker, ld, such as -L.
+        env['LDFLAGS'] += ' -L' + self.ctx.get_libs_dir(self.arch)
+        # LDLIBS: Library flags or names given to compilers when they are
+        # supposed to invoke the linker.
+        env['LDLIBS'] = '-lm'
 
-        env['LDFLAGS'] += '--sysroot={} '.format(self.ctx.ndk_platform)
-
-        env["CXXFLAGS"] = env["CFLAGS"]
-
-        env["LDFLAGS"] += " ".join(['-lm', '-L' + self.ctx.get_libs_dir(self.arch)])
-
-        if self.ctx.ndk == 'crystax':
-            env['LDFLAGS'] += ' -L{}/sources/crystax/libs/{} -lcrystax'.format(self.ctx.ndk_dir, self.arch)
-
-        toolchain_prefix = self.ctx.toolchain_prefix
-        toolchain_version = self.ctx.toolchain_version
-        command_prefix = self.command_prefix
-
-        env['TOOLCHAIN_PREFIX'] = toolchain_prefix
-        env['TOOLCHAIN_VERSION'] = toolchain_version
-
+        # CCACHE
         ccache = ''
         if self.ctx.ccache and bool(int(environ.get('USE_CCACHE', '1'))):
             # print('ccache found, will optimize builds')
             ccache = self.ctx.ccache + ' '
             env['USE_CCACHE'] = '1'
             env['NDK_CCACHE'] = self.ctx.ccache
-            env.update({k: v for k, v in environ.items() if k.startswith('CCACHE_')})
+            env.update(
+                {k: v for k, v in environ.items() if k.startswith('CCACHE_')}
+            )
 
-        if clang:
-            llvm_dirname = split(
-                glob(join(self.ctx.ndk_dir, 'toolchains', 'llvm*'))[-1])[-1]
-            clang_path = join(self.ctx.ndk_dir, 'toolchains', llvm_dirname,
-                              'prebuilt', build_platform, 'bin')
-            environ['PATH'] = '{clang_path}:{path}'.format(
-                clang_path=clang_path, path=environ['PATH'])
-            exe = join(clang_path, 'clang')
-            execxx = join(clang_path, 'clang++')
-        else:
-            exe = '{command_prefix}-gcc'.format(command_prefix=command_prefix)
-            execxx = '{command_prefix}-g++'.format(command_prefix=command_prefix)
+        # Compiler: `CC` and `CXX`
+        llvm_dirname = split(
+            glob(join(self.ctx.ndk_dir, 'toolchains', 'llvm*'))[-1]
+        )[-1]
+        clang_path = join(
+            self.ctx.ndk_dir,
+            'toolchains',
+            llvm_dirname,
+            'prebuilt',
+            build_platform,
+            'bin',
+        )
+        environ['PATH'] = '{clang_path}:{path}'.format(
+            clang_path=clang_path, path=environ['PATH']
+        )
+        exe = join(clang_path, 'clang')
+        execxx = join(clang_path, 'clang++')
 
         cc = find_executable(exe, path=environ['PATH'])
         if cc is None:
@@ -149,34 +149,45 @@ class Arch(object):
                 execxx=execxx,
                 ccache=ccache)
 
+        # Android's binaries
+        command_prefix = self.command_prefix
         env['AR'] = '{}-ar'.format(command_prefix)
         env['RANLIB'] = '{}-ranlib'.format(command_prefix)
-        env['LD'] = '{}-ld'.format(command_prefix)
-        env['LDSHARED'] = env["CC"] + " -pthread -shared " +\
-            "-Wl,-O1 -Wl,-Bsymbolic-functions "
-        if self.ctx.python_recipe and self.ctx.python_recipe.from_crystax:
-            # For crystax python, we can't use the host python headers:
-            env["CFLAGS"] += ' -I{}/sources/python/{}/include/python/'.\
-                format(self.ctx.ndk_dir, self.ctx.python_recipe.version[0:3])
         env['STRIP'] = '{}-strip --strip-unneeded'.format(command_prefix)
-        env['MAKE'] = 'make -j5'
+        env['MAKE'] = 'make -j{}'.format(str(cpu_count()))
         env['READELF'] = '{}-readelf'.format(command_prefix)
         env['NM'] = '{}-nm'.format(command_prefix)
+        env['LD'] = '{}-ld'.format(command_prefix)
 
+        # Android's arch/toolchain
+        env['ARCH'] = self.arch
+        env['NDK_API'] = 'android-{}'.format(str(self.ctx.ndk_api))
+        env['TOOLCHAIN_PREFIX'] = self.ctx.toolchain_prefix
+        env['TOOLCHAIN_VERSION'] = self.ctx.toolchain_version
+
+        # Custom linker options
+        env['LDSHARED'] = env['CC'] + (
+            ' -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions ')
+
+        # Host python (used by some recipes)
         hostpython_recipe = Recipe.get_recipe(
             'host' + self.ctx.python_recipe.name, self.ctx)
         env['BUILDLIB_PATH'] = join(
             hostpython_recipe.get_build_dir(self.arch),
-            'build', 'lib.{}-{}'.format(
-                build_platform, self.ctx.python_recipe.major_minor_version_string)
+            'build',
+            'lib.{}-{}'.format(
+                build_platform,
+                self.ctx.python_recipe.major_minor_version_string,
+            ),
         )
 
         env['PATH'] = environ['PATH']
 
-        env['ARCH'] = self.arch
-        env['NDK_API'] = 'android-{}'.format(str(self.ctx.ndk_api))
-
+        # Specific flags for crystax (can we remove this?)
         if self.ctx.python_recipe and self.ctx.python_recipe.from_crystax:
+            # For crystax python, we can't use the host python headers:
+            env["CPPFLAGS"] += ' -I{}/sources/python/{}/include/python/'.\
+                format(self.ctx.ndk_dir, self.ctx.python_recipe.version[0:3])
             env['CRYSTAX_PYTHON_VERSION'] = self.ctx.python_recipe.version
 
         return env
@@ -191,8 +202,10 @@ class ArchARM(Arch):
     @property
     def target(self):
         target_data = self.command_prefix.split('-')
-        return '-'.join(
-            ['armv7a', 'none', target_data[1], target_data[2]])
+        return '{triplet}{ndk_api}'.format(
+            triplet='-'.join(['armv7a', target_data[1], target_data[2]]),
+            ndk_api=self.ctx.ndk_api,
+        )
 
 
 class ArchARMv7_a(ArchARM):
