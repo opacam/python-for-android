@@ -47,7 +47,7 @@ class Arch(object):
             triplet=self.command_prefix, ndk_api=self.ctx.ndk_api
         )
 
-    def get_env(self, with_flags_in_cc=True, clang=False):
+    def get_env(self, with_flags_in_cc=True):
         env = {}
 
         # CFLAGS and CXXFLAGS
@@ -211,8 +211,8 @@ class ArchARM(Arch):
 class ArchARMv7_a(ArchARM):
     arch = 'armeabi-v7a'
 
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(ArchARMv7_a, self).get_env(with_flags_in_cc, clang=clang)
+    def get_env(self, with_flags_in_cc=True):
+        env = super(ArchARMv7_a, self).get_env(with_flags_in_cc)
         env['CFLAGS'] = (env['CFLAGS'] +
                          (' -march=armv7-a -mfloat-abi=softfp '
                           '-mfpu=vfp -mthumb'))
@@ -226,8 +226,8 @@ class Archx86(Arch):
     command_prefix = 'i686-linux-android'
     platform_dir = 'arch-x86'
 
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(Archx86, self).get_env(with_flags_in_cc, clang=clang)
+    def get_env(self, with_flags_in_cc=True):
+        env = super(Archx86, self).get_env(with_flags_in_cc)
         env['CFLAGS'] = (env['CFLAGS'] +
                          ' -march=i686 -mtune=intel -mssse3 -mfpmath=sse -m32')
         env['CXXFLAGS'] = env['CFLAGS']
@@ -240,8 +240,8 @@ class Archx86_64(Arch):
     command_prefix = 'x86_64-linux-android'
     platform_dir = 'arch-x86_64'
 
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(Archx86_64, self).get_env(with_flags_in_cc, clang=clang)
+    def get_env(self, with_flags_in_cc=True):
+        env = super(Archx86_64, self).get_env(with_flags_in_cc)
         env['CFLAGS'] = (env['CFLAGS'] +
                          ' -march=x86-64 -msse4.2 -mpopcnt -m64 -mtune=intel')
         env['CXXFLAGS'] = env['CFLAGS']
@@ -254,8 +254,8 @@ class ArchAarch_64(Arch):
     command_prefix = 'aarch64-linux-android'
     platform_dir = 'arch-arm64'
 
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(ArchAarch_64, self).get_env(with_flags_in_cc, clang=clang)
+    def get_env(self, with_flags_in_cc=True):
+        env = super(ArchAarch_64, self).get_env(with_flags_in_cc)
         incpath = ' -I' + join(dirname(__file__), 'includes', 'arm64-v8a')
         env['EXTRA_CFLAGS'] = incpath
         env['CFLAGS'] += incpath
