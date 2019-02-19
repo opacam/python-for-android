@@ -41,39 +41,18 @@ class OpenSSLRecipe(Recipe):
         - Add ability to build a legacy version of the openssl libs when using
           python2legacy or python3crystax.
 
+    .. versionchanged:: 0.7.1
+        - Removed legacy libs
+
     '''
 
-    standard_version = '1.1'
+    version = '1.1'
     '''the major minor version used to link our recipes'''
-    legacy_version = '1.0'
-    '''the major minor version used to link our recipes when using
-    python2legacy or python3crystax'''
 
-    standard_url_version = '1.1.1'
+    url_version = '1.1.1'
     '''the version used to download our libraries'''
-    legacy_url_version = '1.0.2q'
-    '''the version used to download our libraries when using python2legacy or
-    python3crystax'''
 
     url = 'https://www.openssl.org/source/openssl-{url_version}.tar.gz'
-
-    @property
-    def use_legacy(self):
-        if not self.ctx.recipe_build_order:
-            return False
-        return 'python3crystax' in self.ctx.recipe_build_order
-
-    @property
-    def version(self):
-        if self.use_legacy:
-            return self.legacy_version
-        return self.standard_version
-
-    @property
-    def url_version(self):
-        if self.use_legacy:
-            return self.legacy_url_version
-        return self.standard_url_version
 
     @property
     def versioned_url(self):
@@ -116,19 +95,15 @@ class OpenSSLRecipe(Recipe):
         env = super(OpenSSLRecipe, self).get_recipe_env(arch)
         env['OPENSSL_VERSION'] = self.version
         env['MAKE'] = 'make'  # This removes the '-j5', which isn't safe
-        if self.use_legacy:
-            env['CFLAGS'] += ' ' + env['LDFLAGS']
-            env['CC'] += ' ' + env['LDFLAGS']
-        else:
-            env['ANDROID_NDK'] = self.ctx.ndk_dir
+        env['ANDROID_NDK'] = self.ctx.ndk_dir
         return env
 
     def select_build_arch(self, arch):
         aname = arch.arch
         if 'arm64' in aname:
-            return 'android-arm64' if not self.use_legacy else 'linux-aarch64'
+            return 'android-arm64'
         if 'v7a' in aname:
-            return 'android-arm' if not self.use_legacy else 'android-armv7'
+            return 'android-arm'
         if 'arm' in aname:
             return 'android'
         if 'x86_64' in aname:
@@ -150,18 +125,10 @@ class OpenSSLRecipe(Recipe):
             #              ^
             # crypto/aes/bsaes-armv7.S:1434:14: error: immediate operand must be in the range [0,4095]
             #  sub r6, r8, #.LREVM0SR-.LSR @ pass constants
-            config_args = ['shared', 'no-dso', 'no-asm']
-            if self.use_legacy:
-                config_args.append('no-krb5')
-            config_args.append(buildarch)
-            if not self.use_legacy:
-                config_args.append('-D__ANDROID_API__={}'.format(self.ctx.ndk_api))
+            config_args = ['shared', 'no-dso', 'no-asm', buildarch,
+                           '-D__ANDROID_API__={}'.format(self.ctx.ndk_api)]
             shprint(perl, 'Configure', *config_args, _env=env)
-            self.apply_patch(
-                'disable-sover{}.patch'.format(
-                    '-legacy' if self.use_legacy else ''), arch.arch)
-            if self.use_legacy:
-                self.apply_patch('rename-shared-lib.patch', arch.arch)
+            self.apply_patch('disable-sover.patch', arch.arch)
 
             shprint(sh.make, 'build_libs', _env=env)
 
