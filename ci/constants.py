@@ -42,6 +42,9 @@ BROKEN_RECIPES_PYTHON2 = set([
     'omemo',
     # requires `libpq-dev` system dependency e.g. for `pg_config` binary
     'psycopg2',
+    # with ndk r19, fails on `checking for arm-eabi-gcc...` gcc is no longer
+    # used in ndk r19, so we should review this when pycrypto get fixed
+    'pycrypto',
     # most likely some setup in the Docker container, because it works in host
     'pyjnius', 'pyopenal',
     'pyproj',
@@ -70,6 +73,9 @@ BROKEN_RECIPES_PYTHON3 = set([
     # requires `libpq-dev` system dependency e.g. for `pg_config` binary
     'psycopg2',
     'protobuf_cpp',
+    # with ndk r19, fails on `checking for arm-eabi-gcc...` gcc is no longer
+    # used in ndk r19, so we should review this when pycrypto get fixed
+    'pycrypto',
     # most likely some setup in the Docker container, because it works in host
     'pyjnius', 'pyopenal',
     # SyntaxError: invalid syntax (Python2)
