@@ -701,6 +701,59 @@ class NDKRecipe(Recipe):
             )
 
 
+class StlRecipe(Recipe):
+    '''A recipe class which depends on android's stl shared library.'''
+
+    stl_lib_name = 'c++_shared'
+    '''
+    The default stl shared lib to use: `c++_shared`.
+
+    .. note:: Android ndk version > 17 only supports 'c++_shared', because
+        starting from ndk r18 the `gnustl_shared` lib has been deprecated.
+    '''
+
+    def get_stl_lib_dir(self, arch):
+        stl_dir = 'llvm-libc++'
+        stl_lib_dir = (
+            "{ctx.ndk_dir}/sources/cxx-stl/{stl_dir}/libs/{arch.arch}".format(
+                ctx=self.ctx, stl_dir=stl_dir, arch=arch))
+        return stl_lib_dir
+
+    def get_recipe_env(self, arch=None, with_flags_in_cc=True):
+        env = super(StlRecipe, self).get_recipe_env(arch, with_flags_in_cc)
+
+        stl_dir = 'llvm-libc++'
+        keys = dict(
+            ctx=self.ctx,
+            arch=arch,
+            arch_noeabi=arch.arch.replace('eabi', ''),
+            stl_dir=stl_dir,
+        )
+        env['CPPFLAGS'] = env.get('CPPFLAGS', '') + (
+                " -I{ctx.ndk_dir}/platforms/android-{ctx.android_api}/"
+                "arch-{arch_noeabi}/usr/include" +
+                " -I{ctx.ndk_dir}/sources/cxx-stl/{stl_dir}/include").format(
+                    **keys)
+        env['CXXFLAGS'] = env['CFLAGS'] + ' -frtti -fexceptions'
+        if with_flags_in_cc:
+            env['CXX'] += ' -frtti -fexceptions'
+        env['LDFLAGS'] += " -L{}".format(self.get_stl_lib_dir(arch))
+        env['LIBS'] = env.get('LIBS', '') + " -l{}".format(self.stl_lib_name)
+
+        return env
+
+    def install_stl_lib(self, arch):
+        # Copy `libc++_shared.so` in case that was not already copied
+        stl_lib_name = 'lib{name}.so'.format(name=self.stl_lib_name)
+        stl_lib_path = join(self.get_stl_lib_dir(arch), stl_lib_name)
+        if not isfile(join(self.ctx.get_libs_dir(arch.arch), stl_lib_name)):
+            self.install_libs(arch, stl_lib_path)
+
+    def postbuild_arch(self, arch):
+        super(StlRecipe, self).postbuild_arch(arch)
+        self.install_stl_lib(arch)
+
+
 class PythonRecipe(Recipe):
     site_packages_name = None
     '''The name of the module's folder when installed in the Python
@@ -911,38 +964,15 @@ class CompiledComponentsPythonRecipe(PythonRecipe):
                 *self.setup_extra_args)
 
 
-class CppCompiledComponentsPythonRecipe(CompiledComponentsPythonRecipe):
+class CppCompiledComponentsPythonRecipe(
+        StlRecipe, CompiledComponentsPythonRecipe):
     """ Extensions that require the cxx-stl """
     call_hostpython_via_targetpython = False
 
-    def get_recipe_env(self, arch):
-        env = super(CppCompiledComponentsPythonRecipe, self).get_recipe_env(arch)
-        keys = dict(
-            ctx=self.ctx,
-            arch=arch,
-            arch_noeabi=arch.arch.replace('eabi', '')
-        )
-        env['LDSHARED'] = env['CC'] + ' -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions'
-        env['CFLAGS'] += (
-            " -I{ctx.ndk_dir}/platforms/android-{ctx.android_api}/arch-{arch_noeabi}/usr/include" +
-            " -I{ctx.ndk_dir}/sources/cxx-stl/gnu-libstdc++/{ctx.toolchain_version}/include" +
-            " -I{ctx.ndk_dir}/sources/cxx-stl/gnu-libstdc++/{ctx.toolchain_version}/libs/{arch.arch}/include").format(**keys)
-        env['CXXFLAGS'] = env['CFLAGS'] + ' -frtti -fexceptions'
-        env['LDFLAGS'] += (
-            " -L{ctx.ndk_dir}/sources/cxx-stl/gnu-libstdc++/{ctx.toolchain_version}/libs/{arch.arch}" +
-            " -lgnustl_shared").format(**keys)
-
+    def get_recipe_env(self, arch=None, with_flags_in_cc=True):
+        env = super(CppCompiledComponentsPythonRecipe, self).get_recipe_env(
+            arch, with_flags_in_cc)
         return env
-
-    def build_compiled_components(self, arch):
-        super(CppCompiledComponentsPythonRecipe, self).build_compiled_components(arch)
-
-        # Copy libgnustl_shared.so
-        with current_directory(self.get_build_dir(arch.arch)):
-            sh.cp(
-                "{ctx.ndk_dir}/sources/cxx-stl/gnu-libstdc++/{ctx.toolchain_version}/libs/{arch.arch}/libgnustl_shared.so".format(ctx=self.ctx, arch=arch),
-                self.ctx.get_libs_dir(arch.arch)
-            )
 
 
 class CythonRecipe(PythonRecipe):
