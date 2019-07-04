@@ -1,6 +1,6 @@
 from distutils.spawn import find_executable
 from os import environ
-from os.path import join, dirname, split
+from os.path import join, split
 from multiprocessing import cpu_count
 from glob import glob
 
@@ -15,6 +15,35 @@ class Arch(object):
 
     command_prefix = None
     '''The prefix for NDK commands such as gcc.'''
+
+    arch = ""
+    '''Name of the arch such as: `armeabi-v7a`, `arm64-v8a`, `x86`...'''
+
+    arch_cflags = []
+    '''Specific arch `cflags`, expect to be overwrote in subclass if needed.'''
+
+    common_cflags = [
+        '-target {target}',
+        '-fomit-frame-pointer'
+    ]
+
+    common_cppflags = [
+        '-DANDROID',
+        '-D__ANDROID_API__={ctx.ndk_api}',
+        '-I{ctx.ndk_dir}/sysroot/usr/include/{command_prefix}',
+        '-I{python_includes}',
+    ]
+
+    common_ldflags = ['-L{ctx_libs_dir}']
+
+    common_ldlibs = ['-lm']
+
+    common_ldshared = [
+        '-pthread',
+        '-shared',
+        '-Wl,-O1',
+        '-Wl,-Bsymbolic-functions',
+    ]
 
     def __init__(self, ctx):
         super(Arch, self).__init__()
@@ -47,32 +76,70 @@ class Arch(object):
             triplet=self.command_prefix, ndk_api=self.ctx.ndk_api
         )
 
+    @property
+    def clang_path(self):
+        """Full path of the clang compiler"""
+        llvm_dirname = split(
+            glob(join(self.ctx.ndk_dir, 'toolchains', 'llvm*'))[-1]
+        )[-1]
+        return join(
+            self.ctx.ndk_dir,
+            'toolchains',
+            llvm_dirname,
+            'prebuilt',
+            build_platform,
+            'bin',
+        )
+
+    @property
+    def clang_exe(self):
+        """Full path of the clang compiler depending on the android's ndk
+        version used."""
+        return self.get_clang_exe()
+
+    @property
+    def clang_exe_cxx(self):
+        """Full path of the clang++ compiler depending on the android's ndk
+        version used."""
+        return self.get_clang_exe(plus_plus=True)
+
+    def get_clang_exe(self, with_target=False, plus_plus=False):
+        """Returns the full path of the clang/clang++ compiler, supports two
+        kwargs:
+
+          - `with_target`: prepend `target` to clang
+          - `plus_plus`: will return the clang++ compiler (defaults to `False`)
+        """
+        compiler = 'clang'
+        if with_target:
+            compiler = '{target}-{compiler}'.format(
+                target=self.target, compiler=compiler
+            )
+        if plus_plus:
+            compiler += '++'
+        return join(self.clang_path, compiler)
+
     def get_env(self, with_flags_in_cc=True, clang=False):
         env = {}
 
-        # CFLAGS and CXXFLAGS
-        cflags = [
-            '-target ' + self.target,
-            '-fomit-frame-pointer']
-        env['CFLAGS'] = ' '.join(cflags)
+        # CFLAGS/CXXFLAGS: the processor flags
+        env['CFLAGS'] = ' '.join(self.common_cflags).format(target=self.target)
+        if self.arch_cflags:
+            # each architecture may have has his own CFLAGS
+            env['CFLAGS'] += ' ' + ' '.join(self.arch_cflags)
         env['CXXFLAGS'] = env['CFLAGS']
 
         # CPPFLAGS (for macros and includes)
-        cppflags = [
-            '-DANDROID',
-            '-D__ANDROID_API__={}'.format(self.ctx.ndk_api),
-            '-I{}/sysroot/usr/include/{}'.format(
-                self.ctx.ndk_dir, self.command_prefix
-            ),
-            '-I'
-            + join(
+        env['CPPFLAGS'] = ' '.join(self.common_cppflags).format(
+            ctx=self.ctx,
+            command_prefix=self.command_prefix,
+            python_includes=join(
                 self.ctx.get_python_install_dir(),
                 'include/python{}'.format(self.ctx.python_recipe.version[0:3]),
             ),
-        ]
-        env['CPPFLAGS'] = ' '.join(cppflags)
+        )
 
-        # Link the extra global link paths first before anything else
+        # LDFLAGS: Link the extra global link paths first before anything else
         # (such that overriding system libraries with them is possible)
         env['LDFLAGS'] = (
             ' '
@@ -84,15 +151,14 @@ class Arch(object):
                     for l in self.extra_global_link_paths
                 ]
             )
-            + ' '
+            + ' ' + ' '.join(self.common_ldflags).format(
+                ctx_libs_dir=self.ctx.get_libs_dir(self.arch)
+            )
         )
 
-        # LDFLAGS: Extra flags to give to compilers when they are supposed to
-        # invoke the linker, ld, such as -L.
-        env['LDFLAGS'] += ' -L' + self.ctx.get_libs_dir(self.arch)
         # LDLIBS: Library flags or names given to compilers when they are
         # supposed to invoke the linker.
-        env['LDLIBS'] = '-lm'
+        env['LDLIBS'] = ' '.join(self.common_ldlibs)
 
         # CCACHE
         ccache = ''
@@ -105,48 +171,34 @@ class Arch(object):
                 {k: v for k, v in environ.items() if k.startswith('CCACHE_')}
             )
 
-        # Compiler: `CC` and `CXX`
-        llvm_dirname = split(
-            glob(join(self.ctx.ndk_dir, 'toolchains', 'llvm*'))[-1]
-        )[-1]
-        clang_path = join(
-            self.ctx.ndk_dir,
-            'toolchains',
-            llvm_dirname,
-            'prebuilt',
-            build_platform,
-            'bin',
-        )
+        # Compiler: `CC` and `CXX` (and make sure that the compiler exists)
         environ['PATH'] = '{clang_path}:{path}'.format(
-            clang_path=clang_path, path=environ['PATH']
+            clang_path=self.clang_path, path=environ['PATH']
         )
-        exe = join(clang_path, 'clang')
-        execxx = join(clang_path, 'clang++')
-
-        cc = find_executable(exe, path=environ['PATH'])
+        cc = find_executable(self.clang_exe, path=environ['PATH'])
         if cc is None:
             print('Searching path are: {!r}'.format(environ['PATH']))
             raise BuildInterruptingException(
                 'Couldn\'t find executable for CC. This indicates a '
                 'problem locating the {} executable in the Android '
                 'NDK, not that you don\'t have a normal compiler '
-                'installed. Exiting.'.format(exe))
+                'installed. Exiting.'.format(self.clang_exe))
 
         if with_flags_in_cc:
             env['CC'] = '{ccache}{exe} {cflags}'.format(
-                exe=exe,
+                exe=self.clang_exe,
                 ccache=ccache,
                 cflags=env['CFLAGS'])
             env['CXX'] = '{ccache}{execxx} {cxxflags}'.format(
-                execxx=execxx,
+                execxx=self.clang_exe_cxx,
                 ccache=ccache,
                 cxxflags=env['CXXFLAGS'])
         else:
             env['CC'] = '{ccache}{exe}'.format(
-                exe=exe,
+                exe=self.clang_exe,
                 ccache=ccache)
             env['CXX'] = '{ccache}{execxx}'.format(
-                execxx=execxx,
+                execxx=self.clang_exe_cxx,
                 ccache=ccache)
 
         # Android's binaries
@@ -166,8 +218,7 @@ class Arch(object):
         env['TOOLCHAIN_VERSION'] = self.ctx.toolchain_version
 
         # Custom linker options
-        env['LDSHARED'] = env['CC'] + (
-            ' -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions ')
+        env['LDSHARED'] = env['CC'] + ' ' + ' '.join(self.common_ldshared)
 
         # Host python (used by some recipes)
         hostpython_recipe = Recipe.get_recipe(
@@ -211,14 +262,12 @@ class ArchARM(Arch):
 
 class ArchARMv7_a(ArchARM):
     arch = 'armeabi-v7a'
-
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(ArchARMv7_a, self).get_env(with_flags_in_cc, clang=clang)
-        env['CFLAGS'] = (env['CFLAGS'] +
-                         (' -march=armv7-a -mfloat-abi=softfp '
-                          '-mfpu=vfp -mthumb'))
-        env['CXXFLAGS'] = env['CFLAGS']
-        return env
+    arch_cflags = [
+        '-march=armv7-a',
+        '-mfloat-abi=softfp',
+        '-mfpu=vfp',
+        '-mthumb',
+    ]
 
 
 class Archx86(Arch):
@@ -226,13 +275,13 @@ class Archx86(Arch):
     toolchain_prefix = 'x86'
     command_prefix = 'i686-linux-android'
     platform_dir = 'arch-x86'
-
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(Archx86, self).get_env(with_flags_in_cc, clang=clang)
-        env['CFLAGS'] = (env['CFLAGS'] +
-                         ' -march=i686 -mtune=intel -mssse3 -mfpmath=sse -m32')
-        env['CXXFLAGS'] = env['CFLAGS']
-        return env
+    arch_cflags = [
+        '-march=i686',
+        '-mtune=intel',
+        '-mssse3',
+        '-mfpmath=sse',
+        '-m32',
+    ]
 
 
 class Archx86_64(Arch):
@@ -240,13 +289,13 @@ class Archx86_64(Arch):
     toolchain_prefix = 'x86_64'
     command_prefix = 'x86_64-linux-android'
     platform_dir = 'arch-x86_64'
-
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(Archx86_64, self).get_env(with_flags_in_cc, clang=clang)
-        env['CFLAGS'] = (env['CFLAGS'] +
-                         ' -march=x86-64 -msse4.2 -mpopcnt -m64 -mtune=intel')
-        env['CXXFLAGS'] = env['CFLAGS']
-        return env
+    arch_cflags = [
+        '-march=x86-64',
+        '-msse4.2',
+        '-mpopcnt',
+        '-m64',
+        '-mtune=intel',
+    ]
 
 
 class ArchAarch_64(Arch):
@@ -254,14 +303,12 @@ class ArchAarch_64(Arch):
     toolchain_prefix = 'aarch64-linux-android'
     command_prefix = 'aarch64-linux-android'
     platform_dir = 'arch-arm64'
+    arch_cflags = [
+        '-march=armv8-a',
+        # '-I' + join(dirname(__file__), 'includes', 'arm64-v8a'),
+    ]
 
-    def get_env(self, with_flags_in_cc=True, clang=False):
-        env = super(ArchAarch_64, self).get_env(with_flags_in_cc, clang=clang)
-        incpath = ' -I' + join(dirname(__file__), 'includes', 'arm64-v8a')
-        env['EXTRA_CFLAGS'] = incpath
-        env['CFLAGS'] += incpath
-        env['CXXFLAGS'] += incpath
-        if with_flags_in_cc:
-            env['CC'] += incpath
-            env['CXX'] += incpath
-        return env
+    # def get_env(self, with_flags_in_cc=True, clang=False):
+    #     env = super(ArchAarch_64, self).get_env(with_flags_in_cc, clang=clang)
+    #     env['EXTRA_CFLAGS'] = self.arch_cflags[-1]
+    #     return env
