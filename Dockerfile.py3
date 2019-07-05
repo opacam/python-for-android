@@ -38,7 +38,7 @@ RUN curl https://raw.githubusercontent.com/kadwanev/retry/1.0.1/retry \
     --output /usr/local/bin/retry && chmod +x /usr/local/bin/retry
 
 ENV ANDROID_NDK_HOME="${ANDROID_HOME}/android-ndk"
-ENV ANDROID_NDK_VERSION="17c"
+ENV ANDROID_NDK_VERSION="19b"
 ENV ANDROID_NDK_HOME_V="${ANDROID_NDK_HOME}-r${ANDROID_NDK_VERSION}"
 
 # get the latest version from https://developer.android.com/ndk/downloads/index.html
@@ -82,7 +82,7 @@ RUN ${RETRY} apt -y install -qq --no-install-recommends openjdk-8-jdk \
 RUN yes | "${ANDROID_SDK_HOME}/tools/bin/sdkmanager" "build-tools;${ANDROID_SDK_BUILD_TOOLS_VERSION}" > /dev/null
 
 # download platforms, API, build tools
-RUN "${ANDROID_SDK_HOME}/tools/bin/sdkmanager" "platforms;android-19" && \
+RUN "${ANDROID_SDK_HOME}/tools/bin/sdkmanager" "platforms;android-21" && \
     "${ANDROID_SDK_HOME}/tools/bin/sdkmanager" "platforms;android-27" && \
     "${ANDROID_SDK_HOME}/tools/bin/sdkmanager" "build-tools;${ANDROID_SDK_BUILD_TOOLS_VERSION}" && \
     chmod +x "${ANDROID_SDK_HOME}/tools/bin/avdmanager"
