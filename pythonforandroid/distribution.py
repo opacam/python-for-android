@@ -22,6 +22,7 @@ class Distribution(object):
     url = None
     dist_dir = None  # Where the dist dir ultimately is. Should not be None.
     ndk_api = None
+    android_api = None
 
     archs = []
     '''The arch targets that the dist is built for.'''
@@ -43,7 +44,6 @@ class Distribution(object):
 
     @classmethod
     def get_distribution(cls, ctx, name=None, recipes=[],
-                         ndk_api=None,
                          force_build=False,
                          extra_dist_dirs=[],
                          require_perfect_match=False,
@@ -83,6 +83,8 @@ class Distribution(object):
 
         name_match_dist = None
 
+        req_archs = [arch.arch for arch in ctx.archs]
+
         # 0) Check if a dist with that name already exists
         if name is not None and name:
             possible_dists = [d for d in possible_dists if d.name == name]
@@ -92,9 +94,13 @@ class Distribution(object):
         # 1) Check if any existing dists meet the requirements
         _possible_dists = []
         for dist in possible_dists:
-            if (
-                ndk_api is not None and dist.ndk_api != ndk_api
-            ) or dist.ndk_api is None:
+            if any(
+                [
+                    dist.ndk_api != ctx.ndk_api,
+                    dist.android_api != ctx.android_api,
+                    set(dist.archs) != set(req_archs),
+                ]
+            ):
                 continue
             for recipe in recipes:
                 if recipe not in dist.recipes:
@@ -110,11 +116,18 @@ class Distribution(object):
         else:
             info('No existing dists meet the given requirements!')
 
-        # If any dist has perfect recipes and ndk API, return it
+        # If any dist has perfect recipes, ndk API,
+        # android api and archs, return it
         for dist in possible_dists:
             if force_build:
                 continue
-            if ndk_api is not None and dist.ndk_api != ndk_api:
+            if any(
+                [
+                    dist.ndk_api != ctx.ndk_api,
+                    dist.android_api != ctx.android_api,
+                    set(dist.archs) != set(req_archs),
+                ]
+            ):
                 continue
             if (set(dist.recipes) == set(recipes) or
                 (set(recipes).issubset(set(dist.recipes)) and
@@ -130,15 +143,38 @@ class Distribution(object):
         # configuration and the build cannot continue
         if name_match_dist is not None and not allow_replace_dist:
             raise BuildInterruptingException(
-                'Asked for dist with name {name} with recipes ({req_recipes}) and '
-                'NDK API {req_ndk_api}, but a dist '
-                'with this name already exists and has either incompatible recipes '
-                '({dist_recipes}) or NDK API {dist_ndk_api}'.format(
+                '\n\tAsked for dist with name {name} and:'
+                '\n\t-> recipes: ({req_recipes})'
+                '\n\t-> NDK api: ({req_ndk_api})'
+                '\n\t-> android api ({req_android_api})'
+                '\n\t-> archs ({req_archs})'
+                '\n...but a dist with this name already exists and has either '
+                'incompatible:'
+                '\n\t-> recipes: ({dist_recipes})'
+                '\n\t-> NDK api: ({dist_ndk_api})'
+                '\n\t-> android api ({dist_android_api})'
+                '\n\t-> archs ({dist_archs})'.format(
                     name=name,
-                    req_ndk_api=ndk_api,
-                    dist_ndk_api=name_match_dist.ndk_api,
                     req_recipes=', '.join(recipes),
-                    dist_recipes=', '.join(name_match_dist.recipes)))
+                    req_ndk_api=ctx.ndk_api,
+                    req_android_api=ctx.android_api,
+                    req_archs=', '.join(req_archs),
+                    dist_recipes=', '.join(name_match_dist.recipes),
+                    dist_ndk_api=name_match_dist.ndk_api,
+                    dist_android_api=name_match_dist.android_api,
+                    dist_archs=', '.join(name_match_dist.archs),
+                )
+            )
+        elif name_match_dist is not None:
+            warning(
+                'We are to overwrite the dist {}, because some of the '
+                'requested arguments mismatch the ones of the current '
+                'distribution (this is the default behaviour of p4a, if you '
+                'prefer to not do so, the next time consider to use the '
+                'argument `--no-allow-replace-dist`)'.format(
+                    name_match_dist.name
+                )
+            )
 
         # If we got this far, we need to build a new dist
         dist = Distribution(ctx)
@@ -154,7 +190,9 @@ class Distribution(object):
         dist.name = name
         dist.dist_dir = join(ctx.dist_dir, dist.name)
         dist.recipes = recipes
+        dist.archs = req_archs
         dist.ndk_api = ctx.ndk_api
+        dist.android_api = ctx.android_api
 
         return dist
 
@@ -186,20 +224,18 @@ class Distribution(object):
                 dist.dist_dir = folder
                 dist.needs_build = False
                 dist.recipes = dist_info['recipes']
-                if 'archs' in dist_info:
-                    dist.archs = dist_info['archs']
-                if 'ndk_api' in dist_info:
-                    dist.ndk_api = dist_info['ndk_api']
-                else:
-                    dist.ndk_api = None
-                    warning(
-                        "Distribution {distname}: ({distdir}) has been "
-                        "built with an unknown api target, ignoring it, "
-                        "you might want to delete it".format(
-                            distname=dist.name,
-                            distdir=dist.dist_dir
+                for entry in {'archs', 'ndk_api', 'android_api'}:
+                    setattr(dist, entry, dist_info.get(entry, None))
+                    if entry not in dist_info:
+                        warning(
+                            "Distribution {distname}: ({distdir}) has been "
+                            "built with an unknown {entry}, ignoring it, "
+                            "you might want to delete it".format(
+                                distname=dist.name,
+                                distdir=dist.dist_dir,
+                                entry=entry,
+                            )
                         )
-                    )
                 dists.append(dist)
         return dists
 
@@ -214,6 +250,7 @@ class Distribution(object):
                            'bootstrap': self.ctx.bootstrap.name,
                            'archs': [arch.arch for arch in self.ctx.archs],
                            'ndk_api': self.ctx.ndk_api,
+                           'android_api': self.ctx.android_api,
                            'use_setup_py': self.ctx.use_setup_py,
                            'recipes': self.ctx.recipe_build_order + self.ctx.python_modules,
                            'hostpython': self.ctx.hostpython,
