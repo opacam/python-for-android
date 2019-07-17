@@ -271,6 +271,9 @@ class TestDistribution(unittest.TestCase):
         expected_dist = Distribution.get_distribution(
             self.ctx, name="test_prj", recipes=["python3", "kivy"]
         )
+        # since we simulate a dist we need to set the recipes in dict format,
+        # not not the case for the `Distribution.get_distribution` call
+        expected_dist.recipes = {"python3": "3.7.1", "kivy": "1.10.0"}
         mock_get_dists.return_value = [expected_dist]
         self.setUp_distribution_with_bootstrap(
             Bootstrap().get_bootstrap("sdl2", self.ctx), name="test_prj"
