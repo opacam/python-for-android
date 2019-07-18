@@ -103,6 +103,24 @@ class GuestPythonRecipe(TargetPythonRecipe):
         self._ctx = None
         super(GuestPythonRecipe, self).__init__(*args, **kwargs)
 
+    @property
+    def link_version(self):
+        py_version = self.major_minor_version_string
+        if py_version[0] == '3':
+            py_version += 'm'
+        return py_version
+
+    @property
+    def lib_name(self):
+        return 'libpython{version}.so'.format(version=self.link_version)
+
+    def should_build(self, arch):
+        if not exists(self.link_root(arch.arch)):
+            return True
+        if exists(join(self.link_root(arch.arch), self.lib_name)):
+            return False
+        return True
+
     def get_recipe_env(self, arch=None, with_flags_in_cc=True):
         env = environ.copy()
 
@@ -244,12 +262,9 @@ class GuestPythonRecipe(TargetPythonRecipe):
                     _env=env)
 
             if not exists('python'):
-                py_version = self.major_minor_version_string
-                if self.major_minor_version_string[0] == '3':
-                    py_version += 'm'
                 shprint(sh.make, 'all', '-j', str(cpu_count()),
-                        'INSTSONAME=libpython{version}.so'.format(
-                            version=py_version), _env=env)
+                        'INSTSONAME={lib_name}'.format(lib_name=self.lib_name),
+                        _env=env)
 
             # TODO: Look into passing the path to pyconfig.h in a
             # better way, although this is probably acceptable
@@ -335,12 +350,7 @@ class GuestPythonRecipe(TargetPythonRecipe):
                 copy2(filen, join(dirn, 'site-packages', filen))
 
         # copy the python .so files into place
-        python_build_dir = join(self.get_build_dir(arch.arch),
-                                'android-build')
-        python_lib_name = 'libpython' + self.major_minor_version_string
-        if self.major_minor_version_string[0] == '3':
-            python_lib_name += 'm'
-        shprint(sh.cp, join(python_build_dir, python_lib_name + '.so'),
+        shprint(sh.cp, join(self.link_root(arch.arch), self.lib_name),
                 join(self.ctx.dist_dir, self.ctx.dist_name, 'libs', arch.arch))
 
         info('Renaming .so files to reflect cross-compile')

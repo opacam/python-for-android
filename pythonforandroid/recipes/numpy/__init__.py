@@ -38,13 +38,11 @@ class NumpyRecipe(CompiledComponentsPythonRecipe):
             self.ctx.ndk_platform
         )
 
-        py_ver = self.ctx.python_recipe.major_minor_version_string
+        py_ver = self.ctx.python_recipe.link_version
         py_inc_dir = self.ctx.python_recipe.include_root(arch.arch)
         py_lib_dir = self.ctx.python_recipe.link_root(arch.arch)
         flags += ' -I{}'.format(py_inc_dir)
         flags += ' -L{} -lpython{}'.format(py_lib_dir, py_ver)
-        if 'python3' in self.ctx.python_recipe.name:
-            flags += 'm'
 
         if flags not in env['CC']:
             env['CC'] += flags
