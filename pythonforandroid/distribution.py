@@ -184,9 +184,11 @@ class Distribution(object):
                 )
             )
 
-        # If we got this far, we need to build a new dist
+        # If we got this far, we need to build a new dist and to do so,
+        # we will make sure that we have a clean build environment
         dist = Distribution(ctx)
         dist.needs_build = True
+        dist.needs_clean_build = True
 
         if not name:
             filen = 'unnamed_dist_{}'
