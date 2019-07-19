@@ -37,6 +37,11 @@ class Arch(object):
             for d in self.ctx.include_dirs]
 
     @property
+    def nice_arch(self):
+        '''Returns `Arch.arch` without hyphen and in Camel Case format'''
+        return ''.join([i.title() for i in self.arch.split('-')])
+
+    @property
     def target(self):
         target_data = self.command_prefix.split('-')
         return '-'.join(
