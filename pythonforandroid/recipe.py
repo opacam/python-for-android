@@ -104,6 +104,15 @@ class Recipe(with_metaclass(RecipeMeta)):
     list of pure-Python packages to install via pip. If you need these packages
     at build time, you must create a recipe.'''
 
+    built_libraries = {}
+    '''Each inherited class of Recipe that builds a system library (i.e:
+    libffi, openssl) should contain a dict holding the relevant information of
+    the library. The keys should be the generated libraries and the values the
+    relative path of the library inside his build folder. This dict will be
+    used to preform different checks (if we have that library in our context,
+    or if we have the build files,needed in some cases to link with other
+    libraries at build time)'''
+
     archs = ['armeabi']  # Not currently implemented properly
 
     @property

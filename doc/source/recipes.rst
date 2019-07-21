@@ -164,6 +164,17 @@ this, copying to the correct lib cache dir::
 Any libs copied to this dir will automatically be included in the
 appropriate libs dir of the generated android project.
 
+.. warning:: If you build a library, you should write a dict of the generated
+             libraries with the relevant information about that library, so
+             this way we can perform some checks when guessing if we can reuse
+             some already created dist. For instance, openssl
+             recipe generates two libraries so it would look like this:
+
+               - built_libraries = {'libcrypto1.1.so': '.', 'libssl1.1.so': '.'}
+
+             The keys should be the generated library and the value the
+             relative path inside his build folder.
+
 Compiling for the Android architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
