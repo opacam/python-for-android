@@ -11,6 +11,8 @@ class LibIconvRecipe(Recipe):
 
     url = 'https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.tar.gz'
 
+    built_libraries = {'libiconv.so': 'lib/.libs'}
+
     patches = ['libiconv-1.15-no-gets.patch']
 
     def should_build(self, arch):

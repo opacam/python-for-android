@@ -10,6 +10,7 @@ class FFMpegRecipe(Recipe):
     depends = ['sdl2']  # Need this to build correct recipe order
     opts_depends = ['openssl', 'ffpyplayer_codecs']
     patches = ['patches/configure.patch']
+    built_libraries = {'libavcodec.so': 'lib'}
 
     def should_build(self, arch):
         build_dir = self.get_build_dir(arch.arch)

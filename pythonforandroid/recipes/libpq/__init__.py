@@ -6,6 +6,7 @@ import os.path
 class LibpqRecipe(Recipe):
     version = '9.5.3'
     url = 'http://ftp.postgresql.org/pub/source/v{version}/postgresql-{version}.tar.bz2'
+    built_libraries = {'libpq.a': 'src/interfaces/libpq'}
     depends = []
 
     def should_build(self, arch):

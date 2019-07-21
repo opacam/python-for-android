@@ -9,6 +9,10 @@ class LibxsltRecipe(Recipe):
     url = 'http://xmlsoft.org/sources/libxslt-{version}.tar.gz'
     depends = ['libxml2']
     patches = ['fix-dlopen.patch']
+    built_libraries = {
+        'libxslt.a': 'libxslt/.libs',
+        'libexslt.a': 'libexslt/.libs'
+    }
 
     call_hostpython_via_targetpython = False
 

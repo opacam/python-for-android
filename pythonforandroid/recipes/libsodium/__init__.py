@@ -8,6 +8,7 @@ class LibsodiumRecipe(Recipe):
     url = 'https://github.com/jedisct1/libsodium/releases/download/{version}/libsodium-{version}.tar.gz'
     depends = []
     patches = ['size_max_fix.patch']
+    built_libraries = {'libsodium.so': 'src/libsodium/.libs'}
 
     def should_build(self, arch):
         super(LibsodiumRecipe, self).should_build(arch)

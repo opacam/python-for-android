@@ -15,6 +15,8 @@ class LibZBarRecipe(Recipe):
 
     patches = ["werror.patch"]
 
+    built_libraries = {'libzbar.so': 'zbar/.libs'}
+
     def should_build(self, arch):
         return not os.path.exists(
             os.path.join(self.ctx.get_libs_dir(arch.arch), 'libzbar.so'))

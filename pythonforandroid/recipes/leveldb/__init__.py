@@ -6,6 +6,7 @@ import sh
 class LevelDBRecipe(Recipe):
     version = '1.18'
     url = 'https://github.com/google/leveldb/archive/v{version}.tar.gz'
+    built_libraries = {'libleveldb.so': '.'}
     opt_depends = ['snappy']
     patches = ['disable-so-version.patch', 'find-snappy.patch']
 

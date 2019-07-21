@@ -26,6 +26,7 @@ class FreetypeRecipe(Recipe):
 
     version = '2.5.5'
     url = 'http://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'  # noqa
+    built_libraries = {'libfreetype.so': 'objs/.libs'}
 
     def should_build(self, arch):
         return not exists(

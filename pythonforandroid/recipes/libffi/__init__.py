@@ -23,6 +23,8 @@ class LibffiRecipe(Recipe):
                # remove this when we update the version number for libffi
                'fix-includedir.patch']
 
+    built_libraries = {'libffi.so': '.libs'}
+
     def should_build(self, arch):
         return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libffi.so'))
 

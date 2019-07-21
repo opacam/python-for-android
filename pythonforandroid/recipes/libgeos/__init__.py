@@ -8,6 +8,7 @@ class LibgeosRecipe(Recipe):
     version = '3.5'
     # url = 'http://download.osgeo.org/geos/geos-{version}.tar.bz2'
     url = 'https://github.com/libgeos/libgeos/archive/svn-{version}.zip'
+    built_libraries = {'libgeos_c.so': 'dist/lib'}
     depends = []
 
     def should_build(self, arch):

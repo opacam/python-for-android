@@ -50,6 +50,11 @@ class OpenSSLRecipe(Recipe):
 
     url = 'https://www.openssl.org/source/openssl-{url_version}.tar.gz'
 
+    built_libraries = {
+        'libcrypto{version}.so'.format(version=version): '.',
+        'libssl{version}.so'.format(version=version): '.',
+    }
+
     @property
     def versioned_url(self):
         if self.url is None:

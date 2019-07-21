@@ -47,6 +47,26 @@ class LibtorrentRecipe(Recipe):
     generated_libraries = [
         'boost_system', 'boost_python{py_version}', 'torrent_rasterbar']
 
+    built_libraries = {
+        'libtorrent_rasterbar.so':
+            'bin/clang-linux-arm/release/crypto-openssl/lt-visibility-hidden/'
+            'target-os-android/threading-multi',
+    }
+
+    def __new__(cls, name, bases, dct):
+        if cls.ctx:
+            if (
+                not 'openssl' in cls.ctx.recipe_build_order
+                and 'crypto-openssl'
+                in cls.built_libraries['libtorrent_rasterbar.so']
+            ):
+                cls.built_libraries[
+                    'libtorrent_rasterbar.so'
+                ] = cls.built_libraries['libtorrent_rasterbar.so'].replace(
+                    'crypto-openssl', 'encryption-off'
+                )
+        return super(LibtorrentRecipe, cls).__new__(cls, name, bases, dct)
+
     def should_build(self, arch):
         python_version = self.ctx.python_recipe.version[:3].replace('.', '')
         libs = ['lib' + lib_name.format(py_version=python_version) +

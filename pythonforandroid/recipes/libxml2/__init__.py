@@ -9,6 +9,7 @@ class Libxml2Recipe(Recipe):
     url = 'http://xmlsoft.org/sources/libxml2-{version}.tar.gz'
     depends = []
     patches = ['add-glob.c.patch']
+    built_libraries = {'libxml2.a': '.libs'}
 
     def should_build(self, arch):
         super(Libxml2Recipe, self).should_build(arch)

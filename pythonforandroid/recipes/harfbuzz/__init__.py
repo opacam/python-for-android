@@ -23,6 +23,7 @@ class HarfbuzzRecipe(Recipe):
     version = '0.9.40'
     url = 'http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-{version}.tar.bz2'  # noqa
     opt_depends = ['freetype']
+    built_libraries = {'libharfbuzz.so': 'src/.libs'}
 
     def should_build(self, arch):
         return not exists(

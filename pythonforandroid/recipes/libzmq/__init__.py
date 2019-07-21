@@ -8,6 +8,7 @@ class LibZMQRecipe(Recipe):
     version = '4.3.1'
     url = 'https://github.com/zeromq/libzmq/releases/download/v{version}/zeromq-{version}.zip'
     depends = []
+    built_libraries = {'libzmq.so', 'src/.libs'}
 
     def should_build(self, arch):
         super(LibZMQRecipe, self).should_build(arch)

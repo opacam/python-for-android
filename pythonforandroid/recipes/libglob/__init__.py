@@ -20,6 +20,7 @@ class LibGlobRecipe(CompiledComponentsPythonRecipe):
     #   https://raw.githubusercontent.com/white-gecko/TokyoCabinet/master/glob.c
     # and pushed in via patch
     name = 'libglob'
+    built_libraries = {'libglob.so': '.'}
 
     depends = [('hostpython2', 'hostpython3')]
     patches = ['glob.patch']
