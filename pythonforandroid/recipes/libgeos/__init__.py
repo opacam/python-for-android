@@ -1,5 +1,5 @@
 from pythonforandroid.toolchain import Recipe, shprint, shutil, current_directory
-from os.path import exists, join
+from os.path import join
 import sh
 from multiprocessing import cpu_count
 
@@ -10,10 +10,6 @@ class LibgeosRecipe(Recipe):
     url = 'https://github.com/libgeos/libgeos/archive/svn-{version}.zip'
     built_libraries = {'libgeos_c.so': 'dist/lib'}
     depends = []
-
-    def should_build(self, arch):
-        super(LibgeosRecipe, self).should_build(arch)
-        return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libgeos_c.so'))
 
     def build_arch(self, arch):
         super(LibgeosRecipe, self).build_arch(arch)

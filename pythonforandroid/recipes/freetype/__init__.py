@@ -1,7 +1,7 @@
 from pythonforandroid.toolchain import Recipe
 from pythonforandroid.logger import shprint, info
 from pythonforandroid.util import current_directory
-from os.path import exists, join
+from os.path import join
 from multiprocessing import cpu_count
 import sh
 
@@ -27,16 +27,6 @@ class FreetypeRecipe(Recipe):
     version = '2.5.5'
     url = 'http://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'  # noqa
     built_libraries = {'libfreetype.so': 'objs/.libs'}
-
-    def should_build(self, arch):
-        return not exists(
-            join(
-                self.get_build_dir(arch.arch),
-                'objs',
-                '.libs',
-                'libfreetype.so',
-            )
-        )
 
     def get_recipe_env(self, arch=None, with_harfbuzz=False):
         env = super(FreetypeRecipe, self).get_recipe_env(arch)

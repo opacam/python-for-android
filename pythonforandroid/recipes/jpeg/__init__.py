@@ -1,7 +1,7 @@
 from pythonforandroid.recipe import Recipe
 from pythonforandroid.logger import shprint
 from pythonforandroid.util import current_directory
-from os.path import join, exists
+from os.path import join
 from os import environ, uname
 from glob import glob
 import sh
@@ -19,10 +19,6 @@ class JpegRecipe(Recipe):
     built_libraries = {'libjpeg.a': '.', 'libturbojpeg.a': '.'}
     # we will require this below patch to build the shared library
     # patches = ['remove-version.patch']
-
-    def should_build(self, arch):
-        return not exists(join(self.get_build_dir(arch.arch),
-                               'libturbojpeg.a'))
 
     def build_arch(self, arch):
         super(JpegRecipe, self).build_arch(arch)

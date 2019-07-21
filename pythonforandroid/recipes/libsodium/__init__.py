@@ -1,5 +1,5 @@
 from pythonforandroid.toolchain import Recipe, shprint, shutil, current_directory
-from os.path import exists, join
+from os.path import join
 import sh
 
 
@@ -9,10 +9,6 @@ class LibsodiumRecipe(Recipe):
     depends = []
     patches = ['size_max_fix.patch']
     built_libraries = {'libsodium.so': 'src/libsodium/.libs'}
-
-    def should_build(self, arch):
-        super(LibsodiumRecipe, self).should_build(arch)
-        return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libsodium.so'))
 
     def build_arch(self, arch):
         super(LibsodiumRecipe, self).build_arch(arch)

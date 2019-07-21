@@ -20,9 +20,6 @@ class LibmysqlclientRecipe(Recipe):
 
     patches = ['disable-soversion.patch']
 
-    def should_build(self, arch):
-        return not self.has_libs(arch, 'libmysql.so')
-
     def build_arch(self, arch):
         env = self.get_recipe_env(arch)
         with current_directory(join(self.get_build_dir(arch.arch), 'libmysqlclient')):

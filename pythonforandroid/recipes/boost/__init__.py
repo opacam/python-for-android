@@ -44,27 +44,6 @@ class BoostRecipe(Recipe):
             'target-os-android/threading-multi/visibility-hidden',
     }
 
-    def __new__(cls, name, bases, dct):
-        if cls.ctx:
-            if (
-                'python2' in cls.ctx.recipe_build_order
-                and 'libboost_python37.so' in cls.built_libraries
-            ):
-                py3_boost = cls.built_libraries.pop('libboost_python37.so')
-                cls.built_libraries[
-                    'libboost_python27.so'
-                ] = py3_boost.replace('python-3.7', 'python-2.7')
-            if (
-                not 'openssl' in cls.ctx.recipe_build_order
-                and 'crypto-openssl'
-                in cls.built_libraries['libboost_system.so']
-            ):
-                for k, v in cls.built_libraries:
-                    cls.built_libraries[k] = v.replace(
-                        'crypto-openssl', 'encryption-off'
-                    )
-        return super(BoostRecipe, cls).__new__(cls, name, bases, dct)
-
     @property
     def versioned_url(self):
         if self.url is None:
@@ -78,6 +57,24 @@ class BoostRecipe(Recipe):
 
     def prebuild_arch(self, arch):
         super(BoostRecipe, self).prebuild_arch(arch)
+        if (
+            'python2' in self.ctx.recipe_build_order
+            and 'libboost_python37.so' in self.built_libraries
+        ):
+            py3_boost = self.built_libraries.pop('libboost_python37.so')
+            self.built_libraries[
+                'libboost_python27.so'
+            ] = py3_boost.replace('python-3.7', 'python-2.7')
+        if (
+            'openssl' not in self.ctx.recipe_build_order
+            and 'crypto-openssl'
+            in self.built_libraries['libboost_system.so']
+        ):
+            for k, v in self.built_libraries:
+                self.built_libraries[k] = v.replace(
+                    'crypto-openssl', 'encryption-off'
+                )
+
         env = self.get_recipe_env(arch)
         with current_directory(self.get_build_dir(arch.arch)):
             if not exists(env['CROSSHOME']):

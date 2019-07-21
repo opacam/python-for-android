@@ -1,5 +1,5 @@
 from pythonforandroid.toolchain import Recipe, current_directory, shprint
-from os.path import exists, join, realpath
+from os.path import realpath
 import sh
 
 
@@ -7,10 +7,6 @@ class LibX264Recipe(Recipe):
     version = 'x264-snapshot-20171218-2245-stable'  # using mirror url since can't use ftp
     url = 'http://mirror.yandex.ru/mirrors/ftp.videolan.org/x264/snapshots/{version}.tar.bz2'
     built_libraries = {'libx264.a': 'lib'}
-
-    def should_build(self, arch):
-        build_dir = self.get_build_dir(arch.arch)
-        return not exists(join(build_dir, 'lib', 'libx264.a'))
 
     def build_arch(self, arch):
         with current_directory(self.get_build_dir(arch.arch)):

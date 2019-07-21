@@ -25,9 +25,6 @@ class LibffiRecipe(Recipe):
 
     built_libraries = {'libffi.so': '.libs'}
 
-    def should_build(self, arch):
-        return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libffi.so'))
-
     def build_arch(self, arch):
         env = self.get_recipe_env(arch)
         with current_directory(self.get_build_dir(arch.arch)):

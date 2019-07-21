@@ -486,11 +486,34 @@ class Recipe(with_metaclass(RecipeMeta)):
 
             shprint(sh.touch, join(build_dir, '.patched'))
 
+    def get_recipe_libraries(self, arch_name, in_context=False):
+        '''Return the full path of the library depending on the architecture.
+        Per default, the build library path it will be returned, unless
+        `get_recipes_libraries` has been called with kwarg `in_context` set to
+        True.'''
+        recipe_libs = set()
+        if not self.built_libraries:
+            return recipe_libs
+        for lib, rel_path in self.built_libraries.items():
+            if not in_context:
+                abs_path = join(self.get_build_dir(arch_name), rel_path, lib)
+                if rel_path in {'.', '', None}:
+                    abs_path = join(self.get_build_dir(arch_name), lib)
+            else:
+                abs_path = join(self.ctx.get_libs_dir(arch_name), lib)
+            recipe_libs.add(abs_path)
+        return recipe_libs
+
     def should_build(self, arch):
         '''Should perform any necessary test and return True only if it needs
-        building again.
-
+        building again. This is implemented for library recipes, defined by
+        property class `built_libraries`, in case that is empty, it would force
+        the build of the recipe unless overwrote in subclass
         '''
+        if self.built_libraries:
+            return not all(
+                exists(lib) for lib in self.get_recipe_libraries(arch.arch)
+            )
         return True
 
     def build_arch(self, arch):

@@ -90,10 +90,6 @@ class OpenSSLRecipe(Recipe):
         in the format: `-L<lib directory> -l<lib>`'''
         return self.link_dirs_flags(arch) + self.link_libs_flags()
 
-    def should_build(self, arch):
-        return not self.has_libs(arch, 'libssl' + self.version + '.so',
-                                 'libcrypto' + self.version + '.so')
-
     def get_recipe_env(self, arch=None):
         env = super(OpenSSLRecipe, self).get_recipe_env(arch, clang=True)
         env['OPENSSL_VERSION'] = self.version

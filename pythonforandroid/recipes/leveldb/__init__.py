@@ -10,9 +10,6 @@ class LevelDBRecipe(Recipe):
     opt_depends = ['snappy']
     patches = ['disable-so-version.patch', 'find-snappy.patch']
 
-    def should_build(self, arch):
-        return not self.has_libs(arch, 'libleveldb.so', 'libgnustl_shared.so')
-
     def build_arch(self, arch):
         super(LevelDBRecipe, self).build_arch(arch)
         env = self.get_recipe_env(arch)

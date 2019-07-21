@@ -17,10 +17,6 @@ class LibZBarRecipe(Recipe):
 
     built_libraries = {'libzbar.so': 'zbar/.libs'}
 
-    def should_build(self, arch):
-        return not os.path.exists(
-            os.path.join(self.ctx.get_libs_dir(arch.arch), 'libzbar.so'))
-
     def get_recipe_env(self, arch=None, with_flags_in_cc=True):
         env = super(LibZBarRecipe, self).get_recipe_env(arch, with_flags_in_cc)
         libiconv = self.get_recipe('libiconv', self.ctx)

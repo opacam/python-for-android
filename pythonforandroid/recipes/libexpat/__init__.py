@@ -1,7 +1,7 @@
 
 import sh
 from pythonforandroid.toolchain import Recipe, shprint, shutil, current_directory
-from os.path import exists, join
+from os.path import join
 from multiprocessing import cpu_count
 
 
@@ -10,11 +10,6 @@ class LibexpatRecipe(Recipe):
     url = 'https://github.com/libexpat/libexpat/archive/{version}.zip'
     built_libraries = {'libexpat.so': 'dist/lib'}
     depends = []
-
-    def should_build(self, arch):
-        super(LibexpatRecipe, self).should_build(arch)
-        return not exists(
-            join(self.ctx.get_libs_dir(arch.arch), 'libexpat.so'))
 
     def build_arch(self, arch):
         super(LibexpatRecipe, self).build_arch(arch)

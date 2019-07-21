@@ -11,11 +11,6 @@ class Libxml2Recipe(Recipe):
     patches = ['add-glob.c.patch']
     built_libraries = {'libxml2.a': '.libs'}
 
-    def should_build(self, arch):
-        super(Libxml2Recipe, self).should_build(arch)
-        return not exists(
-            join(self.get_build_dir(arch.arch), '.libs', 'libxml2.a'))
-
     def build_arch(self, arch):
         super(Libxml2Recipe, self).build_arch(arch)
         env = self.get_recipe_env(arch)

@@ -1,6 +1,6 @@
 from pythonforandroid.toolchain import Recipe, shprint, shutil, current_directory
 from pythonforandroid.util import ensure_dir
-from os.path import exists, join
+from os.path import join
 import sh
 
 
@@ -9,11 +9,6 @@ class LibZMQRecipe(Recipe):
     url = 'https://github.com/zeromq/libzmq/releases/download/v{version}/zeromq-{version}.zip'
     depends = []
     built_libraries = {'libzmq.so', 'src/.libs'}
-
-    def should_build(self, arch):
-        super(LibZMQRecipe, self).should_build(arch)
-        return True
-        return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libzmq.so'))
 
     def build_arch(self, arch):
         super(LibZMQRecipe, self).build_arch(arch)

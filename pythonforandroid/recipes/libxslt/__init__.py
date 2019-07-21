@@ -16,11 +16,6 @@ class LibxsltRecipe(Recipe):
 
     call_hostpython_via_targetpython = False
 
-    def should_build(self, arch):
-        return not exists(
-            join(self.get_build_dir(arch.arch),
-                 'libxslt', '.libs', 'libxslt.a'))
-
     def build_arch(self, arch):
         super(LibxsltRecipe, self).build_arch(arch)
         env = self.get_recipe_env(arch)

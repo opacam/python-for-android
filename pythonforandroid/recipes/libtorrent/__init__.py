@@ -53,20 +53,6 @@ class LibtorrentRecipe(Recipe):
             'target-os-android/threading-multi',
     }
 
-    def __new__(cls, name, bases, dct):
-        if cls.ctx:
-            if (
-                not 'openssl' in cls.ctx.recipe_build_order
-                and 'crypto-openssl'
-                in cls.built_libraries['libtorrent_rasterbar.so']
-            ):
-                cls.built_libraries[
-                    'libtorrent_rasterbar.so'
-                ] = cls.built_libraries['libtorrent_rasterbar.so'].replace(
-                    'crypto-openssl', 'encryption-off'
-                )
-        return super(LibtorrentRecipe, cls).__new__(cls, name, bases, dct)
-
     def should_build(self, arch):
         python_version = self.ctx.python_recipe.version[:3].replace('.', '')
         libs = ['lib' + lib_name.format(py_version=python_version) +
@@ -76,6 +62,17 @@ class LibtorrentRecipe(Recipe):
 
     def prebuild_arch(self, arch):
         super(LibtorrentRecipe, self).prebuild_arch(arch)
+        if (
+            'openssl' not in self.ctx.recipe_build_order
+            and 'crypto-openssl'
+            in self.built_libraries['libtorrent_rasterbar.so']
+        ):
+            self.built_libraries[
+                'libtorrent_rasterbar.so'
+            ] = self.built_libraries['libtorrent_rasterbar.so'].replace(
+                'crypto-openssl', 'encryption-off'
+            )
+
         if 'openssl' in recipe.ctx.recipe_build_order:
             # Patch boost user-config.jam to use openssl
             self.get_recipe('boost', self.ctx).apply_patch(

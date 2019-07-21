@@ -1,6 +1,6 @@
 import sh
 from pythonforandroid.toolchain import Recipe, shprint, shutil, current_directory
-from os.path import exists, join
+from os.path import join
 from multiprocessing import cpu_count
 
 
@@ -9,10 +9,6 @@ class LibcurlRecipe(Recipe):
     url = 'https://curl.haxx.se/download/curl-7.55.1.tar.gz'
     built_libraries = {'libcurl.so': 'dist/lib'}
     depends = ['openssl']
-
-    def should_build(self, arch):
-        super(LibcurlRecipe, self).should_build(arch)
-        return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libcurl.so'))
 
     def build_arch(self, arch):
         super(LibcurlRecipe, self).build_arch(arch)

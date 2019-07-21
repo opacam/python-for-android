@@ -2,7 +2,7 @@ from pythonforandroid.toolchain import Recipe
 from pythonforandroid.util import current_directory
 from pythonforandroid.logger import shprint
 from multiprocessing import cpu_count
-from os.path import exists, join
+from os.path import join
 import sh
 
 
@@ -24,13 +24,6 @@ class HarfbuzzRecipe(Recipe):
     url = 'http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-{version}.tar.bz2'  # noqa
     opt_depends = ['freetype']
     built_libraries = {'libharfbuzz.so': 'src/.libs'}
-
-    def should_build(self, arch):
-        return not exists(
-            join(
-                self.get_build_dir(arch.arch), 'src', '.libs', 'libharfbuzz.so'
-            )
-        )
 
     def get_recipe_env(self, arch=None):
         env = super(HarfbuzzRecipe, self).get_recipe_env(arch)

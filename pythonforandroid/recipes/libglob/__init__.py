@@ -25,10 +25,6 @@ class LibGlobRecipe(CompiledComponentsPythonRecipe):
     depends = [('hostpython2', 'hostpython3')]
     patches = ['glob.patch']
 
-    def should_build(self, arch):
-        """It's faster to build than check"""
-        return True
-
     def prebuild_arch(self, arch):
         """Make the build and target directories"""
         path = self.get_build_dir(arch.arch)
