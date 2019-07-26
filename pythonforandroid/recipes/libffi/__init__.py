@@ -2,7 +2,7 @@ from os.path import exists, join
 from multiprocessing import cpu_count
 from pythonforandroid.recipe import Recipe
 from pythonforandroid.logger import shprint
-from pythonforandroid.util import current_directory, ensure_dir
+from pythonforandroid.util import current_directory
 import sh
 
 
@@ -23,10 +23,9 @@ class LibffiRecipe(Recipe):
                # remove this when we update the version number for libffi
                'fix-includedir.patch']
 
-    def should_build(self, arch):
-        return not exists(join(self.ctx.get_libs_dir(arch.arch), 'libffi.so'))
+    built_libraries = {'libffi.so': '.libs'}
 
-    def build_arch(self, arch):
+    def do_build_libs(self, arch):
         env = self.get_recipe_env(arch)
         with current_directory(self.get_build_dir(arch.arch)):
             if not exists('configure'):
@@ -39,12 +38,6 @@ class LibffiRecipe(Recipe):
                     '--enable-shared', _env=env)
 
             shprint(sh.make, '-j', str(cpu_count()), 'libffi.la', _env=env)
-
-            host_build = self.get_build_dir(arch.arch)
-            ensure_dir(self.ctx.get_libs_dir(arch.arch))
-            shprint(sh.cp,
-                    join(host_build, '.libs', 'libffi.so'),
-                    self.ctx.get_libs_dir(arch.arch))
 
     def get_include_dirs(self, arch):
         return [join(self.get_build_dir(arch.arch), 'include')]
