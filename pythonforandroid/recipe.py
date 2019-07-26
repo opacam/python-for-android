@@ -508,6 +508,20 @@ class Recipe(with_metaclass(RecipeMeta)):
             )
         return True
 
+    def do_build_libs(self, arch):
+        '''The system library recipes, defined by attribute
+        :attr:`~pythonforandroid.recipe.Recipe.built_libraries`, should
+        overwrite this class with the proper commands to compile the libraries
+        '''
+        if self.built_libraries:
+            raise NotImplementedError("Not implemented in Recipe")
+
+    def do_install_libs(self, arch):
+        shared_libs = [
+            lib for lib in self.get_libraries(arch) if lib.endswith(".so")
+        ]
+        self.install_libs(arch, *shared_libs)
+
     def build_arch(self, arch):
         '''Run any build tasks for the Recipe. By default, this checks if
         any build_archname methods exist for the archname of the current
@@ -515,6 +529,11 @@ class Recipe(with_metaclass(RecipeMeta)):
         build = "build_{}".format(arch.arch)
         if hasattr(self, build):
             getattr(self, build)()
+        # in case that we detect a library recipe, we split the build in two
+        # steps, so we can control the copy and check of the built libraries
+        if self.built_libraries:
+            self.do_build_libs(arch)
+            self.do_install_libs(arch)
 
     def postbuild_arch(self, arch):
         '''Run any post-build tasks for the Recipe. By default, this checks if
