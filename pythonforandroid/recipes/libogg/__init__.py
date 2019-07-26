@@ -1,16 +1,15 @@
-from pythonforandroid.recipe import NDKRecipe
+from pythonforandroid.recipe import Recipe
 from pythonforandroid.toolchain import current_directory, shprint
 from os.path import join
 import sh
 
 
-class OggRecipe(NDKRecipe):
+class OggRecipe(Recipe):
     version = '1.3.3'
     url = 'http://downloads.xiph.org/releases/ogg/libogg-{version}.tar.gz'
+    built_libraries = {'libogg.so': 'src/.libs'}
 
-    generated_libraries = ['libogg.so']
-
-    def build_arch(self, arch):
+    def do_build_libs(self, arch):
         with current_directory(self.get_build_dir(arch.arch)):
             env = self.get_recipe_env(arch)
             flags = [
