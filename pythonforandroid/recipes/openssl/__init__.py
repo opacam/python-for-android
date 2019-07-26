@@ -1,6 +1,8 @@
 from os.path import join
 
-from pythonforandroid.toolchain import Recipe, shprint, current_directory
+from pythonforandroid.recipe import Recipe
+from pythonforandroid.util import current_directory
+from pythonforandroid.logger import shprint
 import sh
 
 
@@ -50,6 +52,11 @@ class OpenSSLRecipe(Recipe):
 
     url = 'https://www.openssl.org/source/openssl-{url_version}.tar.gz'
 
+    built_libraries = {
+        'libcrypto{version}.so'.format(version=version): '.',
+        'libssl{version}.so'.format(version=version): '.',
+    }
+
     @property
     def versioned_url(self):
         if self.url is None:
@@ -85,10 +92,6 @@ class OpenSSLRecipe(Recipe):
         in the format: `-L<lib directory> -l<lib>`'''
         return self.link_dirs_flags(arch) + self.link_libs_flags()
 
-    def should_build(self, arch):
-        return not self.has_libs(arch, 'libssl' + self.version + '.so',
-                                 'libcrypto' + self.version + '.so')
-
     def get_recipe_env(self, arch=None):
         env = super(OpenSSLRecipe, self).get_recipe_env(arch, clang=True)
         env['OPENSSL_VERSION'] = self.version
@@ -110,7 +113,7 @@ class OpenSSLRecipe(Recipe):
             return 'android-x86'
         return 'linux-armv4'
 
-    def build_arch(self, arch):
+    def do_build_libs(self, arch):
         env = self.get_recipe_env(arch)
         with current_directory(self.get_build_dir(arch.arch)):
             # sh fails with code 255 trying to execute ./Configure
@@ -128,9 +131,6 @@ class OpenSSLRecipe(Recipe):
             self.apply_patch('disable-sover.patch', arch.arch)
 
             shprint(sh.make, 'build_libs', _env=env)
-
-            self.install_libs(arch, 'libssl' + self.version + '.so',
-                              'libcrypto' + self.version + '.so')
 
 
 recipe = OpenSSLRecipe()
