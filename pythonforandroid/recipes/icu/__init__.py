@@ -1,6 +1,5 @@
 import sh
 import os
-from glob import glob
 from os.path import join, isdir, exists
 from multiprocessing import cpu_count
 from pythonforandroid.recipe import Recipe
@@ -11,12 +10,23 @@ from pythonforandroid.util import current_directory, ensure_dir
 class ICURecipe(Recipe):
     name = 'icu4c'
     version = '57.1'
+    major_version = version.split('.')[0]
     url = ('http://download.icu-project.org/files/icu4c/'
            '{version}/icu4c-{version_underscore}-src.tgz')
 
     depends = [('hostpython2', 'hostpython3')]  # installs in python
     patches = ['disable-libs-version.patch']
 
+    built_libraries = {
+        'libicui18n{}.so'.format(major_version): 'build_icu_android/lib',
+        'libicuuc{}.so'.format(major_version): 'build_icu_android/lib',
+        'libicudata{}.so'.format(major_version): 'build_icu_android/lib',
+        'libicule{}.so'.format(major_version): 'build_icu_android/lib',
+        'libicuio{}.so'.format(major_version): 'build_icu_android/lib',
+        'libicutu{}.so'.format(major_version): 'build_icu_android/lib',
+        'libiculx{}.so'.format(major_version): 'build_icu_android/lib',
+        # 'libicutest{}.so'.format(major_version): 'build_icu_android/lib',
+    }
     need_stl_shared = True
 
     @property
@@ -26,24 +36,6 @@ class ICURecipe(Recipe):
         return self.url.format(
             version=self.version,
             version_underscore=self.version.replace('.', '_'))
-
-    def should_build(self, arch):
-        libs_names = {
-            'icui18n',
-            'icuuc',
-            'icudata',
-            'icule',
-            'icuio',
-            'icutu',
-            'iculx',
-            'icutest',
-        }
-        libs = [
-            'lib{name}{version}.so'.format(
-                name=name,
-                version=self.version.split('.')[0]) for name in libs_names
-        ]
-        return not self.has_libs(arch, *libs)
 
     def get_recipe_dir(self):
         """
@@ -57,7 +49,7 @@ class ICURecipe(Recipe):
                 return local_recipe_dir
         return join(self.ctx.root_dir, 'recipes', 'icu')
 
-    def build_arch(self, arch, *extra_args):
+    def do_build_libs(self, arch):
         env = self.get_recipe_env(arch).copy()
         build_root = self.get_build_dir(arch.arch)
 
@@ -117,15 +109,8 @@ class ICURecipe(Recipe):
                 shprint(sh.make, "-j", str(cpu_count()), _env=env)
                 shprint(sh.make, "install", _env=env)
 
-        self.copy_files(arch)
-
-    def copy_files(self, arch):
-        src_lib = join(self.get_build_dir(arch.arch), "icu_build", "lib")
-        so_files = glob(join(src_lib, '*.so'))
-        for f in so_files:
-            final_lib = os.path.split(f)[1]
-            shprint(sh.cp, f, join(self.ctx.get_libs_dir(arch.arch),
-                                   final_lib))
+    def do_install_libs(self, arch):
+        super(ICURecipe, self).do_install_libs(arch)
 
         src_include = join(
             self.get_build_dir(arch.arch), "icu_build", "include")
