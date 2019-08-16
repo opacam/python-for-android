@@ -3,7 +3,7 @@ This module is kind of special because it contains the base classes used to
 build our python3 and python2 recipes and his corresponding hostpython recipes.
 '''
 
-from os.path import dirname, exists, join
+from os.path import dirname, exists, join, isfile
 from multiprocessing import cpu_count
 from shutil import copy2
 from os import environ
@@ -16,6 +16,7 @@ from pythonforandroid.logger import logger, info, shprint
 from pythonforandroid.util import (
     current_directory, ensure_dir, walk_valid_filens,
     BuildInterruptingException, build_platform)
+from pythonforandroid.patching import is_darwin
 
 
 class GuestPythonRecipe(TargetPythonRecipe):
@@ -243,13 +244,20 @@ class GuestPythonRecipe(TargetPythonRecipe):
                                     exec_prefix=sys_exec_prefix)).split(' '),
                     _env=env)
 
-            if not exists('python'):
-                py_version = self.major_minor_version_string
-                if self.major_minor_version_string[0] == '3':
-                    py_version += 'm'
-                shprint(sh.make, 'all', '-j', str(cpu_count()),
-                        'INSTSONAME=libpython{version}.so'.format(
-                            version=py_version), _env=env)
+            # Some platforms use case insensitive FS (like MacOs with HFS+), so
+            # we check if we have the python's library instead of the
+            # executable, which shouldn't conflict with any existing folder in
+            # python's build dir
+            py_version = self.major_minor_version_string
+            if self.major_minor_version_string[0] == '3':
+                py_version += 'm'
+            lib_name = 'libpython{version}.so'.format(version=py_version)
+            if not isfile(join(build_dir, lib_name)):
+                shprint(
+                    sh.make, 'all', '-j', str(cpu_count()),
+                    'INSTSONAME={lib_name}'.format(lib_name=lib_name),
+                    _env=env
+                )
 
             # TODO: Look into passing the path to pyconfig.h in a
             # better way, although this is probably acceptable
@@ -382,6 +390,32 @@ class HostPythonRecipe(Recipe):
     '''The default url to download our host python recipe. This url will
     change depending on the python version set in attribute :attr:`version`.'''
 
+    @property
+    def python_bin(self):
+        '''
+        Returns the name of the python executable depending on the build
+        platform since, as explained in python docs, some platforms generates a
+        different executable name to avoid conflicts with case insensitive File
+        systems (like Mac Os X).
+
+        .. seealso::
+            https://github.com/python/cpython/blob/3.7/README.rst#build-instructions
+
+        '''
+        if is_darwin():
+            return 'python.exe'
+        return 'python'
+
+    def should_build(self, arch):
+        python_bin = join(
+            self.get_build_dir(arch.arch), self.build_subdir, self.python_bin
+        )
+        if exists(python_bin):
+            # no need to build, but we must set:
+            self.ctx.hostpython = python_bin
+            return False
+        return True
+
     def get_build_container_dir(self, arch=None):
         choices = self.check_recipe_choices()
         dir_name = '-'.join([self.name] + choices)
@@ -404,22 +438,25 @@ class HostPythonRecipe(Recipe):
         build_dir = join(recipe_build_dir, self.build_subdir)
         ensure_dir(build_dir)
 
-        if not exists(join(build_dir, 'python')):
-            with current_directory(recipe_build_dir):
-                # Configure the build
-                with current_directory(build_dir):
-                    if not exists('config.status'):
-                        shprint(
-                            sh.Command(join(recipe_build_dir, 'configure')))
+        with current_directory(recipe_build_dir):
+            # Configure the build
+            with current_directory(build_dir):
+                if not exists('config.status'):
+                    shprint(
+                        sh.Command(join(recipe_build_dir, 'configure')))
 
-                # Create the Setup file. This copying from Setup.dist
-                # seems to be the normal and expected procedure.
-                shprint(sh.cp, join('Modules', 'Setup.dist'),
-                        join(build_dir, 'Modules', 'Setup'))
+            # Create the Setup file. This copying from Setup.dist
+            # seems to be the normal and expected procedure.
+            shprint(sh.cp, join('Modules', 'Setup.dist'),
+                    join(build_dir, 'Modules', 'Setup'))
 
-                shprint(sh.make, '-j', str(cpu_count()), '-C', build_dir)
-        else:
-            info('Skipping {name} ({version}) build, as it has already '
-                 'been completed'.format(name=self.name, version=self.version))
+            shprint(sh.make, '-j', str(cpu_count()), '-C', build_dir)
 
-        self.ctx.hostpython = join(build_dir, 'python')
+        # Since we got different python's executable names depending on the
+        # build platform, we add a a debug message which prints the generated
+        # files/folders, in case that we need that...
+        python_dir = join(self.get_build_dir(arch.arch), self.build_subdir)
+        info("Files/folders in python's build directory are:")
+        shprint(sh.ls, python_dir)
+
+        self.ctx.hostpython = join(build_dir, self.python_bin)

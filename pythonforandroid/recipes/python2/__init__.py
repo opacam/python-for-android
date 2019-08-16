@@ -2,6 +2,7 @@ from os.path import join, exists
 from pythonforandroid.recipe import Recipe
 from pythonforandroid.python import GuestPythonRecipe
 from pythonforandroid.logger import shprint, warning
+from pythonforandroid.patching import is_darwin
 import sh
 
 
@@ -33,6 +34,8 @@ class Python2Recipe(GuestPythonRecipe):
                'patches/fix-posix-declarations.patch',
                'patches/fix-pwd-gecos.patch',
                'patches/fix-ctypes-util-find-library.patch']
+    if is_darwin():
+        patches += ["patches/fix-interpreter-for-darwin.patch"]
 
     configure_args = ('--host={android_host}',
                       '--build={android_build}',
