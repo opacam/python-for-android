@@ -69,15 +69,59 @@ jobs:
       after_script:
         # kill the background process started before run docker
         - kill %1
-      name: Python 3 armeabi-v7a
+      name: Python 3 arm64-v8a
       # overrides requirements to skip `peewee` pure python module, see:
       # https://github.com/kivy/python-for-android/issues/1263#issuecomment-390421054
-      env: COMMAND='. venv/bin/activate && cd testapps/ && python setup_testapp_python3_sqlite_openssl.py apk --sdk-dir $ANDROID_SDK_HOME --ndk-dir $ANDROID_NDK_HOME --requirements libffi,sdl2,pyjnius,kivy,python3,openssl,requests,sqlite3,setuptools' --arch=armeabi-v7a
-    - <<: *testing
-      name: Python 3 arm64-v8a
       env: COMMAND='. venv/bin/activate && cd testapps/ && python setup_testapp_python3_sqlite_openssl.py apk --sdk-dir $ANDROID_SDK_HOME --ndk-dir $ANDROID_NDK_HOME --requirements libffi,sdl2,pyjnius,kivy,python3,openssl,requests,sqlite3,setuptools' --arch=arm64-v8a
     - <<: *testing
-      name: Python 2 basic
+      name: Python 3 armeabi-v7a
+      os: osx
+      osx_image: xcode10.2
+      before_install:
+        - export ANDROID_NDK_HOME=$HOME/android-ndk  # (overrides global env)
+        - export ANDROID_SDK_HOME=$HOME/android-sdk  # (overrides global env)
+        - ANDROID_NDK_VERSION=17c
+        - ANDROID_API_LEVEL=27
+        - ANDROID_SDK_BUILD_TOOLS_VERSION=28.0.2
+        - ANDROID_SDK_TOOLS_ARCHIVE=sdk-tools-linux-4333796.zip
+        - ANDROID_SDK_TOOLS_DL_URL=https://dl.google.com/android/repository/$ANDROID_SDK_TOOLS_ARCHIVE
+        - ANDROID_NDK_ARCHIVE=android-ndk-r$ANDROID_NDK_VERSION-darwin-x86_64.zip
+        - ANDROID_NDK_DL_URL=https://dl.google.com/android/repository/$ANDROID_NDK_ARCHIVE
+        - ANDROID_NDK_HOME_V=$ANDROID_NDK_HOME-r$ANDROID_NDK_VERSION
+        # check/install python
+        - python --version
+        - brew update
+        - python3 --version
+        # install java 1.8 and set it as default
+        - brew tap adoptopenjdk/openjdk
+        - brew cask install adoptopenjdk8
+        - /usr/libexec/java_home -V
+        - export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
+        # download/extract android's NDK
+        - curl --location --progress-bar --insecure $ANDROID_NDK_DL_URL --output $ANDROID_NDK_ARCHIVE
+        - mkdir -p $ANDROID_NDK_HOME_V
+        - unzip -q $ANDROID_NDK_ARCHIVE -d $HOME
+        - ln -sfn $ANDROID_NDK_HOME_V $ANDROID_NDK_HOME
+        - rm -rf $ANDROID_NDK_ARCHIVE
+        # download/extract android's SDK
+        - curl --location --progress-bar --insecure $ANDROID_SDK_TOOLS_DL_URL --output $ANDROID_SDK_TOOLS_ARCHIVE
+        - mkdir -p $ANDROID_SDK_HOME
+        - unzip -q $ANDROID_SDK_TOOLS_ARCHIVE -d $ANDROID_SDK_HOME
+        - rm -rf $ANDROID_SDK_TOOLS_ARCHIVE
+        - ls $HOME
+        # Accept android's licenses
+        - yes | $ANDROID_SDK_HOME/tools/bin/sdkmanager "build-tools;$ANDROID_SDK_BUILD_TOOLS_VERSION" > /dev/null
+        - yes | $ANDROID_SDK_HOME/tools/bin/sdkmanager "platforms;android-$ANDROID_API_LEVEL" > /dev/null
+        - pip3 install --upgrade Cython==0.28.6
+        - pip3 install -e .
+      before_script:
+        # overrides `testing` for Mac OS since we don't use docker
+        - while sleep 540; do echo "==== Still running (travis, don't kill me) ===="; done &
+      script:
+        - cd testapps/
+        - python3 setup_testapp_python3_sqlite_openssl.py apk --sdk-dir $ANDROID_SDK_HOME --ndk-dir $ANDROID_NDK_HOME --requirements libffi,sdl2,pyjnius,kivy,python3,openssl,requests,sqlite3,setuptools --arch=armeabi-v7a
+    - <<: *testing
+      name: Python 2 armeabi-v7a (with numpy)
       env: COMMAND='. venv/bin/activate && cd testapps/ && python setup_testapp_python2_sqlite_openssl.py apk --sdk-dir $ANDROID_SDK_HOME --ndk-dir $ANDROID_NDK_HOME --requirements sdl2,pyjnius,kivy,python2,openssl,requests,sqlite3,setuptools,numpy'
     - <<: *testing
       name: Rebuild updated recipes
