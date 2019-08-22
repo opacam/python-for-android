@@ -3,14 +3,7 @@ ifndef ANDROID_HOME
     ANDROID_HOME=$(HOME)/.android
 endif
 
-all: update_brew install_java upgrade_cython install_android_ndk_sdk install_p4a
-
-
-update_brew:
-	# update brew (will install python3)
-	python --version
-	brew update
-	python3 --version
+all: install_java upgrade_cython install_android_ndk_sdk install_p4a
 
 install_java:
 	brew tap adoptopenjdk/openjdk
@@ -25,4 +18,6 @@ install_android_ndk_sdk:
 	make -f ci/makefiles/android.mk target_os=darwin JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 
 install_p4a:
+	# check python version and install p4a
+	python3 --version
 	pip3 install -e .
