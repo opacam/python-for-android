@@ -85,8 +85,6 @@ USER ${USER}
 
 # Download and install android's NDK/SDK
 RUN make -f ci/makefiles/android.mk target_os=linux
-ENV ANDROID_SDK_HOME="${ANDROID_SDK_HOME}"
-ENV ANDROID_NDK_HOME="${ANDROID_NDK_HOME}"
 
 # install python-for-android from current branch
 RUN virtualenv --python=python3 venv \
