@@ -63,8 +63,8 @@ jobs:
         - >
           docker run
           -e CI
-          -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID"
-          -e TRAVIS_BRANCH="$TRAVIS_BRANCH"
+          -e TRAVIS_JOB_ID
+          -e TRAVIS_BRANCH
           -e ANDROID_SDK_HOME="/home/user/.android/android-sdk"
           -e ANDROID_NDK_HOME="/home/user/.android/android-ndk"
           p4a /bin/sh -c "$COMMAND"
@@ -83,9 +83,8 @@ jobs:
       before_script:
         # installs java 1.8, android's SDK/NDK and p4a
         - make -f ci/makefiles/osx.mk
-        - export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
-        # Run a background process to make sure that travis will not kill our tests in
-        # case that the travis log doesn't produce any output for more than 10 minutes
+        # - export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
+        # Run a background process (like we do with linux tests)
         - while sleep 540; do echo "==== Still running (travis, don't kill me) ===="; done &
       script:
         - >

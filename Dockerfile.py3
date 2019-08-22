@@ -65,7 +65,8 @@ RUN ${RETRY} apt -y install -qq --no-install-recommends \
     && apt -y clean
 
 # Install Java and set JAVA_HOME (to accept android's SDK licenses)
-RUN ${RETRY} apt -y install openjdk-8-jdk && apt -y autoremove
+RUN ${RETRY} apt -y install -qq --no-install-recommends openjdk-8-jdk \
+    && apt -y autoremove
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 
 # prepare non root env
