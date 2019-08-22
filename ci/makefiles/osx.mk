@@ -1,7 +1,6 @@
 
-ifndef ANDROID_HOME
-    ANDROID_HOME=$(HOME)/.android
-endif
+# The following variable/s can be override when running the file
+ANDROID_HOME ?= $(HOME)/.android
 
 all: install_java upgrade_cython install_android_ndk_sdk install_p4a
 
