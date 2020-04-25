@@ -3,12 +3,16 @@
 # The following variable/s can be override when running the file
 ANDROID_HOME ?= $(HOME)/.android
 
-all: install_java upgrade_cython install_android_ndk_sdk install_p4a
+all: install_java upgrade_python upgrade_cython install_android_ndk_sdk install_p4a
 
 install_java:
 	brew tap adoptopenjdk/openjdk
 	brew cask install adoptopenjdk8
 	/usr/libexec/java_home -V
+
+upgrade_python:
+	# solves pyconfig.h error when building hostpython
+	brew info python@3.8
 
 upgrade_cython:
 	pip3 install --upgrade Cython==0.28.6
