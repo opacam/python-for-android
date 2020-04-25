@@ -52,10 +52,6 @@ jobs:
         # installs java 1.8, android's SDK/NDK and p4a
         - make -f ci/makefiles/osx.mk
         - export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
-        # Temporary set python 3.8 as default
-        - export PATH=/usr/local/opt/python@3.8/bin:$PATH
-        - export LDFLAGS=-L/usr/local/opt/python@3.8/lib
-        - export PKG_CONFIG_PATH=/usr/local/opt/python@3.8/lib/pkgconfig
       script: make testapps/armeabi-v7a PYTHON_WITH_VERSION=python3
     - <<: *testapps
       name: Rebuild updated recipes
