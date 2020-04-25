@@ -1,4 +1,6 @@
+import os
 import sh
+import sys
 
 from multiprocessing import cpu_count
 from os.path import exists, join, isfile
@@ -81,12 +83,30 @@ class Hostpython3Recipe(Recipe):
         build_dir = join(recipe_build_dir, self.build_subdir)
         ensure_dir(build_dir)
 
+        # ... And add that dir into the `CPLUS_INCLUDE_PATH`,
+        #  so python can find `pyconfig.h` during linking stage in MacOs
+        env = os.environ
+        if sys.platform == 'darwin':
+            env['P4A_FULL_DEBUG'] = 'true'
+            includes = f' -I{build_dir}'
+            if 'CPPFLAGS' in env:
+                env['CPPFLAGS'] = (
+                        env['CPPFLAGS'] + includes
+                )
+            else:
+                env['CPPFLAGS'] = includes
+
         with current_directory(recipe_build_dir):
             # Configure the build
             with current_directory(build_dir):
                 if not exists('config.status'):
-                    shprint(sh.Command(join(recipe_build_dir, 'configure')))
-
+                    shprint(
+                        sh.Command(join(recipe_build_dir, 'configure')),
+                        f'--prefix={build_dir}',
+                        f'--exec-prefix={build_dir}',
+                        _env=env
+                    )
+                shprint(sh.cat, 'config.log')
             # Create the Setup file. This copying from Setup.dist is
             # the normal and expected procedure before Python 3.8, but
             # after this the file with default options is already named "Setup"
@@ -101,7 +121,7 @@ class Hostpython3Recipe(Recipe):
                     raise BuildInterruptingException(
                         "Could not find Setup.dist or Setup in Python build")
 
-            shprint(sh.make, '-j', str(cpu_count()), '-C', build_dir)
+            shprint(sh.make, '-j', str(cpu_count()), '-C', build_dir, _env=env)
 
             # make a copy of the python executable giving it the name we want,
             # because we got different python's executable names depending on
