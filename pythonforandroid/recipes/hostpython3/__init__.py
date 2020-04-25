@@ -86,28 +86,24 @@ class Hostpython3Recipe(Recipe):
         # ... And add that dir into the `CPLUS_INCLUDE_PATH`,
         #  so python can find `pyconfig.h` during linking stage in MacOs
         env = os.environ
-        config_args = [
-            # f'--prefix={build_dir}',
-            # f'--exec-prefix={build_dir}',
-            # '--with-pydebug',
-        ]
         if sys.platform == 'darwin':
             env['P4A_FULL_DEBUG'] = 'true'
-            # includes = f' -I{build_dir}'
-            # if 'CPPFLAGS' in env:
-            #     env['CPPFLAGS'] = (
-            #             env['CPPFLAGS'] + includes
-            #     )
-            # else:
-            #     env['CPPFLAGS'] = includes
-            config_args.append('--with-pydebug')
+            includes = f' -I{build_dir}'
+            if 'CPPFLAGS' in env:
+                env['CPPFLAGS'] = (
+                        env['CPPFLAGS'] + includes
+                )
+            else:
+                env['CPPFLAGS'] = includes
+
         with current_directory(recipe_build_dir):
             # Configure the build
             with current_directory(build_dir):
                 if not exists('config.status'):
                     shprint(
                         sh.Command(join(recipe_build_dir, 'configure')),
-                        *config_args,
+                        f'--prefix={build_dir}',
+                        f'--exec-prefix={build_dir}',
                         _env=env
                     )
                 shprint(sh.cat, 'config.log')
